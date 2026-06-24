@@ -2083,8 +2083,10 @@ async function cetakLaporanBulanan(ttdPerawatDataUrl) {
   .print-sign-row{ display:flex; justify-content:space-between; margin-top:36px; font-size:12px; }
   .print-sign-row-center{ display:flex; justify-content:center; margin-top:28px; font-size:12px; }
   .print-sign-col{ text-align:center; width:280px; }
-  .print-sign-col .sign-space{ height:75px; display:flex; align-items:center; justify-content:center; }
-  .print-sign-col .sign-space img{ max-width:200px; max-height:75px; width:auto; height:auto; display:block; margin:0 auto; object-fit:contain; }
+  .print-sign-col .sign-space{ height:80px; display:flex; align-items:center; justify-content:center; }
+  /* Semua TTD di-export ke rasio 400x160 (2.5:1), jadi tampilkan dengan lebar
+     fixed 200px x tinggi 80px — konsisten di semua kolom TTD. */
+  .print-sign-col .sign-space img{ width:200px; height:80px; display:block; margin:0 auto; object-fit:contain; }
   .toolbar{
     display:flex; gap:10px; justify-content:center; padding:14px;
     background:#f1f1f1; position:sticky; top:0; margin:-24px -28px 24px;
@@ -2243,39 +2245,33 @@ function drawUploadedImageToCanvas(file, canvas, ctx, onDone) {
   reader.readAsDataURL(file);
 }
 
-// Helper bersama: export canvas signature ke data URL yang ukurannya AMAN
-// untuk dikirim ke server.
-// Dua sumber masalah ukuran besar yang diatasi di sini:
-// 1. Di HP dengan layar resolusi tinggi (devicePixelRatio 2-3x), canvas
-//    signature jadi besar secara piksel.
-// 2. PNG bersifat lossless — untuk hasil UPLOAD FOTO (banyak gradasi warna,
-//    bayangan, tekstur kertas dari hasil kamera), ukurannya tetap besar
-//    walau resolusi sudah dikecilkan, karena PNG tidak memotong detail warna.
-// Solusi: resize ke lebar wajar (max ~700px) DAN export sebagai JPEG kualitas
-// 0.85 (bukan PNG) — JPEG sangat efisien untuk foto, dan untuk keperluan
-// tanda tangan (cukup jelas terlihat, tidak perlu piksel sempurna) ini aman.
+// Helper bersama: export canvas signature ke data URL.
+// KUNCI KONSISTENSI CETAK: semua TTD (perawat, verifikator, kepala ruangan)
+// selalu di-output ke dimensi TETAP 400x160 px, tidak tergantung lebar layar
+// atau devicePixelRatio. Ini memastikan aspect ratio identik di semua kolom TTD.
 function exportSignatureDataUrl(sourceCanvas) {
-  const MAX_W = 700;
-  const dpr = window.devicePixelRatio || 1;
-  const realW = sourceCanvas.width;
-  const realH = sourceCanvas.height;
-  const cssW = realW / dpr;
-  const cssH = realH / dpr;
-
-  const scale = cssW > MAX_W ? (MAX_W / cssW) : 1;
-  const outW = Math.round(cssW * scale);
-  const outH = Math.round(cssH * scale);
+  const OUT_W = 400;
+  const OUT_H = 160;
 
   const temp = document.createElement("canvas");
-  temp.width = outW;
-  temp.height = outH;
+  temp.width = OUT_W;
+  temp.height = OUT_H;
   const tctx = temp.getContext("2d");
-  // Latar putih solid dulu (JPEG tidak mendukung transparan; juga membantu
-  // kompresi karena area putih solid sangat ringan di JPEG).
+  // Latar putih solid (JPEG tidak mendukung transparan).
   tctx.fillStyle = "#ffffff";
-  tctx.fillRect(0, 0, outW, outH);
-  tctx.drawImage(sourceCanvas, 0, 0, outW, outH);
-  return temp.toDataURL("image/jpeg", 0.85);
+  tctx.fillRect(0, 0, OUT_W, OUT_H);
+
+  // Fit "contain": TTD tidak terpotong, proporsional, di-center.
+  const srcW = sourceCanvas.width;
+  const srcH = sourceCanvas.height;
+  const scale = Math.min(OUT_W / srcW, OUT_H / srcH);
+  const drawW = srcW * scale;
+  const drawH = srcH * scale;
+  const dx = (OUT_W - drawW) / 2;
+  const dy = (OUT_H - drawH) / 2;
+  tctx.drawImage(sourceCanvas, dx, dy, drawW, drawH);
+
+  return temp.toDataURL("image/jpeg", 0.88);
 }
 
 // Cek ukuran data URL (perkiraan KB). Dipakai untuk memberi peringatan dini
