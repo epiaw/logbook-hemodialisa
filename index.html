@@ -1,15 +1,810 @@
-/* =========================================================================
-   BACKEND LOGBOOK DIGITAL HEMODIALISA — RSUD WELAS ASIH
-   Google Apps Script (Code.gs)
-   ========================================================================= */
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Logbook Digital — Instalasi Hemodialisa RSUD Welas Asih</title>
+<style>
+  :root{
+    --navy:#0f3460;
+    --navy-deep:#0a2540;
+    --teal:#1d7a85;
+    --teal-light:#e6f4f3;
+    --gold:#c89b3c;
+    --paper:#f7f4ec;
+    --ink:#1c2430;
+    --ink-soft:#5a6472;
+    --line:#dcd6c4;
+    --ok-bg:#e3f3e6; --ok-border:#52a866; --ok-text:#2c6e3f;
+    --pending-bg:#fdf3da; --pending-border:#d6a531; --pending-text:#8a6418;
+    --rej-bg:#fbe5e3; --rej-border:#d4564a; --rej-text:#a23327;
+    --radius:10px;
+    --shadow:0 2px 10px rgba(15,52,96,0.08);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+  }
+  .topbar{
+    background:linear-gradient(135deg, var(--navy-deep), var(--navy) 60%, var(--teal));
+    color:#fff;
+    padding:14px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    box-shadow:var(--shadow);
+    position:sticky; top:0; z-index:50;
+  }
+  .topbar .brand{display:flex; align-items:center; gap:12px;}
+  .topbar .brand .crest{
+    width:38px;height:38px;border-radius:50%;
+    background:var(--gold);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;color:var(--navy-deep);font-size:14px;
+    flex-shrink:0;
+  }
+  .topbar .brand-text{line-height:1.2;}
+  .topbar .brand-text .title{font-weight:700;font-size:15px;}
+  .topbar .brand-text .subtitle{font-size:11.5px;opacity:.85;}
+  .topbar .user-chip{
+    display:flex;align-items:center;gap:10px;
+    background:rgba(255,255,255,0.12);
+    border-radius:999px;
+    padding:6px 14px 6px 6px;
+    font-size:13px;
+  }
+  .topbar .user-chip .avatar{
+    width:26px;height:26px;border-radius:50%;
+    background:var(--gold);color:var(--navy-deep);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:11px;
+  }
+  .topbar button.logout{
+    background:transparent;border:1px solid rgba(255,255,255,0.4);
+    color:#fff; border-radius:8px; padding:6px 12px; cursor:pointer;
+    font-size:12.5px;
+  }
+  .topbar button.logout:hover{background:rgba(255,255,255,0.15);}
 
-const SHEET_USERS = "Users";
-const SHEET_BUTIR = "ButirKegiatan";
-const SHEET_PENGAJUAN = "Pengajuan";
-const SHEET_SETTINGS = "Settings";
+  .container{max-width:1080px;margin:0 auto;padding:24px 18px 60px;}
 
-const PK_LIST = ["PK1", "PK2", "PK3", "PK4"];
+  /* ===== LOGIN ===== */
+  .login-wrap{
+    min-height:100vh;
+    display:flex;align-items:center;justify-content:center;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(29,122,133,0.25), transparent 45%),
+      radial-gradient(circle at 85% 80%, rgba(200,155,60,0.18), transparent 45%),
+      linear-gradient(160deg, var(--navy-deep), var(--navy));
+    padding:20px;
+  }
+  .login-card{
+    background:#fff;
+    border-radius:18px;
+    width:100%;max-width:400px;
+    box-shadow:0 20px 60px rgba(10,37,64,0.35);
+    overflow:hidden;
+  }
+  .login-card .head{
+    background:linear-gradient(135deg, var(--navy-deep), var(--teal));
+    color:#fff; padding:28px 26px 22px;
+    text-align:center;
+  }
+  .login-card .head .crest-big{
+    width:56px;height:56px;border-radius:50%;
+    background:var(--gold);margin:0 auto 12px;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;color:var(--navy-deep);font-size:20px;
+  }
+  .login-card .head h1{font-size:17px;margin:0 0 4px;font-weight:700;}
+  .login-card .head p{font-size:12px;margin:0;opacity:.9;}
+  .login-body{padding:26px;}
+  .login-body label{font-size:12.5px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:6px;}
+  .login-body input{
+    width:100%;padding:11px 13px;border:1.5px solid var(--line);
+    border-radius:9px;font-size:14px;margin-bottom:14px;
+    background:var(--paper);
+  }
+  .login-body input:focus{outline:none;border-color:var(--teal);}
+  .login-body button{
+    width:100%;padding:12px;border:none;border-radius:9px;
+    background:var(--navy);color:#fff;font-size:14.5px;font-weight:600;
+    cursor:pointer;transition:.15s;
+  }
+  .login-body button:hover{background:var(--navy-deep);}
+  .login-body button:disabled{opacity:.6;cursor:wait;}
+  .login-msg{
+    font-size:12.5px;margin-top:10px;text-align:center;color:var(--rej-text);
+    min-height:16px;
+  }
+  .login-hint{font-size:11px;color:var(--ink-soft);text-align:center;margin-top:16px;line-height:1.5;}
 
+  /* ===== CARD GENERIC ===== */
+  .card{
+    background:#fff;border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:20px;margin-bottom:18px;
+    border:1px solid var(--line);
+  }
+  .card h2{margin:0 0 14px;font-size:15.5px;color:var(--navy-deep);display:flex;align-items:center;gap:8px;}
+  .card h2 .badge-pk{
+    background:var(--teal);color:#fff;font-size:11px;font-weight:700;
+    padding:3px 10px;border-radius:999px;
+  }
+
+  /* ===== PK SWITCH (untuk yang punya akses multi, biasanya cuma 1 tapi disiapkan) ===== */
+  .pk-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;}
+  .pk-pill{
+    border:1.5px solid var(--line);background:#fff;border-radius:999px;
+    padding:7px 16px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink-soft);
+  }
+  .pk-pill.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+
+  /* ===== BUTIR KEGIATAN ===== */
+  .butir-list{list-style:none;margin:0;padding:0;}
+  .butir-item{
+    display:flex;align-items:flex-start;gap:10px;
+    padding:10px 4px;border-bottom:1px dashed var(--line);
+    font-size:13.5px;line-height:1.5;
+  }
+  .butir-item:last-child{border-bottom:none;}
+  .butir-num{
+    flex-shrink:0;width:24px;height:24px;border-radius:6px;
+    background:var(--teal-light);color:var(--teal);
+    font-size:11.5px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+    margin-top:1px;
+  }
+  .butir-edit-input{
+    flex:1;border:1px solid transparent;background:transparent;
+    font-size:13.5px;font-family:inherit;color:var(--ink);
+    padding:4px 6px;border-radius:6px;line-height:1.5;
+    resize:none;
+  }
+  .butir-edit-input:focus{outline:none;border-color:var(--teal);background:#fff;}
+  .btn-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+  .btn{
+    border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;
+    cursor:pointer;transition:.15s;
+  }
+  .btn-primary{background:var(--navy);color:#fff;}
+  .btn-primary:hover{background:var(--navy-deep);}
+  .btn-ghost{background:#fff;border:1.5px solid var(--line);color:var(--ink-soft);}
+  .btn-ghost:hover{border-color:var(--teal);color:var(--teal);}
+  .btn-add{background:var(--teal-light);color:var(--teal);}
+  .btn-add:hover{background:#d8edec;}
+  .btn-danger-outline{background:#fff;border:1.5px solid var(--rej-border);color:var(--rej-text);}
+  .btn-danger-outline:hover{background:var(--rej-bg);}
+  .btn-sm{padding:6px 12px;font-size:12px;}
+
+  /* ===== FORM PENGATURAN (kop surat, dll) ===== */
+  .settings-form label{
+    font-size:12.5px;font-weight:600;color:var(--ink-soft);
+    display:block;margin:14px 0 6px;
+  }
+  .settings-form label:first-child{margin-top:0;}
+  .settings-form input[type="text"]{
+    width:100%;padding:10px 12px;border:1.5px solid var(--line);
+    border-radius:9px;font-size:13.5px;
+    background:var(--paper);display:block;
+  }
+  .settings-form input[type="text"]:focus{outline:none;border-color:var(--teal);}
+  .settings-form .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;}
+  @media (max-width:560px){
+    .settings-form .grid-2{grid-template-columns:1fr;}
+  }
+
+  /* ===== CALENDAR ===== */
+  .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .cal-header .month-label{font-weight:700;font-size:15px;color:var(--navy-deep);}
+  .cal-nav button{
+    background:var(--teal-light);border:none;color:var(--teal);
+    width:30px;height:30px;border-radius:8px;font-size:14px;cursor:pointer;font-weight:700;
+  }
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+  .cal-dow{font-size:11px;font-weight:700;color:var(--ink-soft);text-align:center;padding-bottom:4px;}
+  .cal-day{
+    position:relative;
+    min-height:64px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:#fff;
+    padding:6px 5px;
+    cursor:pointer;
+    transition:.12s;
+  }
+  .cal-day:hover{border-color:var(--teal);box-shadow:0 0 0 2px rgba(29,122,133,0.15);}
+  .cal-day.empty{background:transparent;border:none;cursor:default;}
+  .cal-day.empty:hover{box-shadow:none;}
+  .cal-day .date-num{font-size:12px;font-weight:700;color:var(--ink);}
+  .cal-day.today .date-num{
+    background:var(--gold);color:#fff;border-radius:50%;
+    width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;
+    font-size:11px;
+  }
+  .cal-day .dots{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}
+  .dot{width:8px;height:8px;border-radius:50%;}
+  .dot.pending{background:var(--pending-border);}
+  .dot.ok{background:var(--ok-border);}
+  .dot.rej{background:var(--rej-border);}
+
+  .legend{display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);}
+  .legend span{display:flex;align-items:center;gap:6px;}
+  .legend .dot{width:9px;height:9px;border-radius:50%;}
+
+  /* ===== LIST PENGAJUAN (riwayat) ===== */
+  .pengajuan-item{
+    border-radius:9px;padding:12px 14px;margin-bottom:9px;
+    border-left:4px solid var(--line);
+    background:#fafaf8;
+    font-size:13px;
+  }
+  .pengajuan-item.pending{background:var(--pending-bg);border-left-color:var(--pending-border);}
+  .pengajuan-item.diterima{background:var(--ok-bg);border-left-color:var(--ok-border);}
+  .pengajuan-item.ditolak{background:var(--rej-bg);border-left-color:var(--rej-border);}
+  .pengajuan-item .row1{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .pengajuan-item .tgl{font-weight:700;font-size:12.5px;color:var(--navy-deep);}
+  .status-tag{
+    font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:999px;text-transform:uppercase;
+    flex-shrink:0;
+  }
+  .status-tag.pending{background:var(--pending-border);color:#fff;}
+  .status-tag.diterima{background:var(--ok-border);color:#fff;}
+  .status-tag.ditolak{background:var(--rej-border);color:#fff;}
+  .pengajuan-item .butir-txt{margin:6px 0 3px;color:var(--ink);}
+  .pengajuan-item .meta{color:var(--ink-soft);font-size:11.5px;}
+
+  /* ===== MODAL ===== */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(10,20,35,0.55);
+    display:none;align-items:center;justify-content:center;z-index:200;padding:16px;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal{
+    background:#fff;border-radius:14px;max-width:420px;width:100%;
+    padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);
+    max-height:90vh;overflow-y:auto;
+  }
+  .modal h3{margin:0 0 4px;font-size:16px;color:var(--navy-deep);}
+  .modal .modal-sub{font-size:12.5px;color:var(--ink-soft);margin-bottom:18px;}
+  .modal label{font-size:12.5px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:6px;}
+  .modal input, .modal select{
+    width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;
+    font-size:13.5px;margin-bottom:14px;background:var(--paper);
+  }
+  .modal input:focus, .modal select:focus{outline:none;border-color:var(--teal);}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:6px;}
+
+  /* day detail list inside modal */
+  .day-existing{margin-bottom:16px;}
+  .day-existing .pengajuan-item{margin-bottom:7px;font-size:12px;padding:9px 11px;}
+
+  /* ===== VERIFIKATOR ===== */
+  .verif-toolbar{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    margin-bottom:16px;flex-wrap:wrap;
+  }
+  .verif-toolbar .filters{display:flex;gap:8px;flex-wrap:wrap;}
+  .verif-toolbar select{
+    border:1.5px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12.5px;background:#fff;
+  }
+  .verif-table-wrap{overflow-x:auto;}
+  table.verif-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table.verif-table th{
+    text-align:left;background:var(--navy);color:#fff;padding:9px 10px;
+    font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;
+    position:sticky;top:0;
+  }
+  table.verif-table th:first-child{border-radius:8px 0 0 0;}
+  table.verif-table th:last-child{border-radius:0 8px 0 0;}
+  table.verif-table td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.verif-table tr.row-pending td{background:var(--pending-bg);}
+  table.verif-table tr.row-diterima td{background:var(--ok-bg);}
+  table.verif-table tr.row-ditolak td{background:var(--rej-bg);}
+  table.verif-table .chk{transform:scale(1.15);cursor:pointer;}
+  .action-btns{display:flex;gap:6px;}
+  .icon-btn{
+    border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:13px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .icon-btn.accept{background:var(--ok-bg);color:var(--ok-text);}
+  .icon-btn.accept:hover{background:var(--ok-border);color:#fff;}
+  .icon-btn.reject{background:var(--rej-bg);color:var(--rej-text);}
+  .icon-btn.reject:hover{background:var(--rej-border);color:#fff;}
+
+  .empty-state{
+    text-align:center;padding:30px 16px;color:var(--ink-soft);font-size:13px;
+  }
+  .sign-saved-badge{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--ok-bg);border:1px solid var(--ok-border);color:var(--ok-text);
+    border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:600;
+  }
+  .sign-preview{
+    max-width:200px;height:auto;border:1px solid var(--line);border-radius:6px;
+    background:#fff;display:block;margin-top:6px;
+  }
+
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:var(--navy-deep);color:#fff;padding:11px 22px;border-radius:999px;
+    font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.25);z-index:300;
+    opacity:0;transition:opacity .25s, transform .25s;pointer-events:none;
+    max-width:90vw;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+  .toast.toast-error{background:#b91c1c;border-radius:14px;}
+
+  .tabs{display:flex;gap:6px;margin-bottom:18px;border-bottom:2px solid var(--line);}
+  .tab-btn{
+    background:none;border:none;padding:10px 16px;font-size:13.5px;font-weight:600;
+    color:var(--ink-soft);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;
+  }
+  .tab-btn.active{color:var(--navy);border-bottom-color:var(--gold);}
+
+  /* ===== Autocomplete (pencarian username & butir kegiatan) ===== */
+  .ac-wrap{ position:relative; }
+  .ac-wrap input[type="text"]{ width:100%; }
+  .ac-input-row{ display:flex; gap:8px; align-items:stretch; }
+  .ac-input-row input[type="text"]{ flex:1; min-width:0; }
+  .ac-search-btn{
+    flex-shrink:0; width:42px; border:1.5px solid var(--line); border-radius:8px;
+    background:var(--paper); cursor:pointer; font-size:16px; color:var(--navy);
+    display:flex; align-items:center; justify-content:center; transition:background .15s, border-color .15s;
+  }
+  .ac-search-btn:hover{ background:#fff; border-color:var(--teal); }
+  .ac-search-btn:active{ background:var(--line); }
+
+  /* ===== Butir Kegiatan: dropdown + kotak lompat cepat (jump-to-letter) ===== */
+  .butir-pick-row{ display:flex; gap:8px; margin-bottom:14px; }
+  .butir-pick-row select{ flex:1.4; min-width:0; margin-bottom:0 !important; }
+  .butir-jump-input{ flex:1; min-width:0; margin-bottom:0 !important; }
+
+  .ac-list{
+    list-style:none; margin:0; padding:4px; position:absolute; left:0; right:0; top:calc(100% + 4px);
+    background:#fff; border:1.5px solid var(--line); border-radius:10px; max-height:240px; overflow-y:auto;
+    box-shadow:0 10px 28px rgba(0,0,0,0.14); z-index:400; display:none;
+  }
+  .ac-list.show{ display:block; }
+  .ac-item{ padding:9px 12px; border-radius:7px; cursor:pointer; font-size:13.5px; color:var(--ink); }
+  .ac-item .ac-sub{ font-size:11.5px; color:var(--ink-soft); margin-top:1px; }
+  .ac-item:hover, .ac-item.active{ background:var(--paper); }
+  .ac-empty{ padding:10px 12px; font-size:12.5px; color:var(--ink-soft); }
+
+  @media (max-width:560px){
+    .cal-day{min-height:52px;}
+    .container{padding:16px 10px 50px;}
+    .topbar .brand-text .subtitle{display:none;}
+    table.verif-table{font-size:11.5px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN VIEW ===================== -->
+<div class="login-wrap" id="loginView">
+  <div class="login-card">
+    <div class="head">
+      <div class="crest-big">HD</div>
+      <h1>Logbook Digital Perawat</h1>
+      <p>Instalasi Hemodialisa &middot; RSUD Welas Asih<br/>Provinsi Jawa Barat</p>
+    </div>
+    <div class="login-body">
+      <label for="usernameInput">Username</label>
+      <div class="ac-wrap">
+        <input type="text" id="usernameInput" placeholder="ketik username atau nama, contoh: abdul" autocomplete="off" />
+        <ul class="ac-list" id="usernameAcList"></ul>
+      </div>
+      <label for="passwordInput">Password</label>
+      <input type="password" id="passwordInput" placeholder="Masukkan password" autocomplete="current-password" />
+      <button id="btnLogin">Masuk</button>
+      <div class="login-msg" id="loginMsg"></div>
+      <div class="login-hint">Gunakan username &amp; password yang telah didaftarkan oleh admin pada sistem.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== APP VIEW ===================== -->
+<div id="appView" style="display:none;">
+  <div class="topbar">
+    <div class="brand">
+      <div class="crest">HD</div>
+      <div class="brand-text">
+        <div class="title">Logbook Digital Perawat Hemodialisa</div>
+        <div class="subtitle">RSUD Welas Asih &middot; Provinsi Jawa Barat</div>
+      </div>
+    </div>
+    <div class="user-chip">
+      <div class="avatar" id="avatarInitial">-</div>
+      <span id="userLabel">-</span>
+      <button class="logout" id="btnGantiPassword" style="border-color:rgba(255,255,255,0.25);">Ganti Password</button>
+      <button class="logout" id="btnLogout">Keluar</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- TABS: hanya muncul kalau role = perawat (PK + Kalender) atau verifikator -->
+    <div class="tabs" id="mainTabs"></div>
+
+    <!-- ====== PERAWAT: PANEL PK & BUTIR KEGIATAN ====== -->
+    <div id="panelPerawat" style="display:none;">
+
+      <div class="card">
+        <h2>Jenjang Karir Anda <span class="badge-pk" id="pkBadge">PK-</span></h2>
+        <div id="pkSwitchRow" class="pk-row"></div>
+      </div>
+
+      <div class="card">
+        <h2 id="butirHeading" class="collapsible-toggle" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+          <span id="butirHeadingLabel">Butir Kegiatan</span>
+          <span id="butirToggleIcon" style="font-size:13px;font-weight:normal;color:var(--ink-soft);">Tampilkan ▾</span>
+        </h2>
+        <div id="butirCollapseBody" style="display:none;">
+          <p style="font-size:12px;color:var(--ink-soft);margin:8px 0 14px;">
+            Daftar butir kegiatan sesuai jenjang karir Anda. Anda dapat memperbarui isi butir kegiatan sewaktu-waktu.
+          </p>
+          <ul class="butir-list" id="butirList"></ul>
+          <div class="btn-row">
+            <button class="btn btn-add" id="btnAddButir">+ Tambah Butir Kegiatan</button>
+            <button class="btn btn-ghost" id="btnBulkButir">+ Tambah Banyak (Paste/Tempel)</button>
+            <button class="btn btn-primary" id="btnSaveButir">Simpan Perubahan</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="cal-header">
+          <div class="cal-nav"><button id="prevMonth">&#8249;</button></div>
+          <div class="month-label" id="monthLabel">-</div>
+          <div class="cal-nav"><button id="nextMonth">&#8250;</button></div>
+        </div>
+        <h2 style="margin-top:0;">Kalender Pengajuan Aktivitas</h2>
+        <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 14px;">
+          Klik tanggal untuk mengajukan aktivitas (input No. Medrek pasien) pada hari tersebut.
+        </p>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="legend">
+          <span><i class="dot pending"></i> Menunggu verifikasi</span>
+          <span><i class="dot ok"></i> Diterima</span>
+          <span><i class="dot rej"></i> Ditolak</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Riwayat Pengajuan Bulan Ini</h2>
+        <div id="riwayatList"></div>
+      </div>
+
+      <div class="card">
+        <h2>Cetak Laporan Bulanan Logbook</h2>
+        <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 14px;">
+          Laporan akan menampilkan aktivitas pada bulan yang sedang ditampilkan di kalender di atas (<strong id="cetakBulanLabel">-</strong>), memuat aktivitas yang <strong>sudah Diterima</strong> maupun yang <strong>masih Menunggu verifikasi</strong> — aktivitas yang masih menunggu akan ditandai warna merah pada kolom tanggal &amp; No. RM. Aktivitas yang <strong>Ditolak</strong> tidak akan ikut tercetak.
+        </p>
+        <div class="btn-row" style="margin-top:0;">
+          <button class="btn btn-primary" id="btnCetakLaporan">🖨️ Pratinjau &amp; Cetak Laporan Bulan Ini</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== VERIFIKATOR PANEL ====== -->
+    <div id="panelVerifikator" style="display:none;">
+
+      <!-- SIGNATURE PAD CARD -->
+      <div class="card" id="signaturePadCard">
+        <h2>Tanda Tangan Verifikator</h2>
+        <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 14px;">
+          Bubuhkan tanda tangan Anda sekali di sini, atau unggah foto/scan tanda tangan dari HP. Tanda tangan ini akan otomatis tercetak di lembar laporan logbook yang diverifikasi.
+        </p>
+        <div id="signatureStatus" style="display:none;margin-bottom:12px;"></div>
+        <div id="signaturePadWrap" style="border:2px dashed var(--line);border-radius:10px;background:#fafaf8;overflow:hidden;cursor:crosshair;touch-action:none;">
+          <canvas id="signatureCanvas" style="display:block;width:100%;height:180px;"></canvas>
+        </div>
+        <p style="font-size:11px;color:var(--ink-soft);margin:6px 0 10px;">Tanda tangan menggunakan jari (layar sentuh) atau mouse, atau unggah gambar tanda tangan dari file.</p>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btnSaveSignature">💾 Simpan Tanda Tangan</button>
+          <button class="btn btn-ghost" id="btnClearSignature">Hapus</button>
+          <button class="btn btn-ghost" id="btnUploadSignature">📁 Unggah dari File</button>
+          <input type="file" id="fileUploadSignature" accept="image/*" style="display:none;" />
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Verifikasi Pengajuan Aktivitas</h2>
+        <div class="verif-toolbar">
+          <div class="filters">
+            <select id="filterBulanVerif"></select>
+            <select id="filterStatusVerif">
+              <option value="">Semua status</option>
+              <option value="pending">Menunggu verifikasi</option>
+              <option value="diterima">Diterima</option>
+              <option value="ditolak">Ditolak</option>
+            </select>
+          </div>
+          <div class="btn-row" style="margin:0;">
+            <button class="btn btn-ghost btn-sm" id="btnSelectAllVerif">Pilih Semua</button>
+            <button class="btn btn-primary btn-sm" id="btnAcceptSelected">Terima Terpilih</button>
+            <button class="btn btn-danger-outline btn-sm" id="btnRejectSelected">Tolak Terpilih</button>
+          </div>
+        </div>
+        <div class="verif-table-wrap">
+          <table class="verif-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="checkAllHeader" class="chk"/></th>
+                <th>Tanggal</th>
+                <th>Perawat</th>
+                <th>PK</th>
+                <th>Butir Kegiatan</th>
+                <th>No. RM</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="verifTableBody"></tbody>
+          </table>
+          <div class="empty-state" id="verifEmptyState" style="display:none;">Belum ada pengajuan pada periode ini.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== KEPALA RUANGAN PANEL (khusus tanda tangan) ====== -->
+    <div id="panelKepalaRuangan" style="display:none;">
+      <div class="card" id="signaturePadCardKaru">
+        <h2>Tanda Tangan Kepala Ruangan</h2>
+        <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 14px;">
+          Bubuhkan tanda tangan Anda sekali di sini, atau unggah foto/scan tanda tangan dari HP. Tanda tangan ini akan otomatis tercetak sebagai tanda tangan "Mengetahui, Kepala Ruangan Instalasi Hemodialisa" pada lembar laporan logbook.
+        </p>
+        <div id="signatureStatusKaru" style="display:none;margin-bottom:12px;"></div>
+        <div id="signaturePadWrapKaru" style="border:2px dashed var(--line);border-radius:10px;background:#fafaf8;overflow:hidden;cursor:crosshair;touch-action:none;">
+          <canvas id="signatureCanvasKaru" style="display:block;width:100%;height:180px;"></canvas>
+        </div>
+        <p style="font-size:11px;color:var(--ink-soft);margin:6px 0 10px;">Tanda tangan menggunakan jari (layar sentuh) atau mouse, atau unggah gambar tanda tangan dari file.</p>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btnSaveSignatureKaru">💾 Simpan Tanda Tangan</button>
+          <button class="btn btn-ghost" id="btnClearSignatureKaru">Hapus</button>
+          <button class="btn btn-ghost" id="btnUploadSignatureKaru">📁 Unggah dari File</button>
+          <input type="file" id="fileUploadSignatureKaru" accept="image/*" style="display:none;" />
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== ADMIN PANEL ====== -->
+    <div id="panelAdmin" style="display:none;">
+
+      <div class="card">
+        <h2>Kelola Daftar Akun</h2>
+        <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 14px;">
+          Tambah, ubah, atau hapus akun perawat/verifikator/admin. Centang lebih dari satu peran jika satu akun memegang beberapa peran sekaligus.
+        </p>
+        <div class="verif-table-wrap">
+          <table class="verif-table" id="userTable">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Nama</th>
+                <th>NIP</th>
+                <th>PK</th>
+                <th>Peran</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody"></tbody>
+          </table>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-add" id="btnAddUser">+ Tambah Akun Baru</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Kelola Butir Kegiatan — Semua Jenjang Karir</h2>
+        <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 14px;">
+          Atur butir kegiatan master untuk PK1 sampai PK4. Perubahan di sini akan menjadi acuan butir kegiatan yang dilihat semua perawat pada PK terkait.
+        </p>
+        <div class="pk-row" id="adminPkSwitchRow"></div>
+        <ul class="butir-list" id="adminButirList" style="margin-top:14px;"></ul>
+        <div class="btn-row">
+          <button class="btn btn-add" id="btnAdminAddButir">+ Tambah Butir Kegiatan</button>
+          <button class="btn btn-ghost" id="btnAdminBulkButir">+ Tambah Banyak (Paste/Tempel)</button>
+          <button class="btn btn-primary" id="btnAdminSaveButir">Simpan Perubahan</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Pengaturan Aplikasi</h2>
+        <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 14px;">
+          Atur kop surat rumah sakit (untuk cetak laporan bulanan) dan penamaan jenjang karir (PK) yang akan terlihat oleh semua akun.
+        </p>
+
+        <div class="settings-form">
+          <label style="font-size:12.5px;font-weight:700;color:var(--navy-deep);margin-top:0;">Kop Surat (untuk laporan cetak)</label>
+          <label for="setKopInstansi1">Baris 1 — Instansi Induk</label>
+          <input type="text" id="setKopInstansi1" placeholder="contoh: PEMERINTAH DAERAH PROVINSI JAWA BARAT" />
+          <label for="setKopInstansi2">Baris 2 — Dinas / Instansi</label>
+          <input type="text" id="setKopInstansi2" placeholder="contoh: DINAS KESEHATAN" />
+          <label for="setKopNamaRS">Nama Rumah Sakit (judul besar)</label>
+          <input type="text" id="setKopNamaRS" placeholder="contoh: UOBK RUMAH SAKIT UMUM DAERAH WELAS ASIH" />
+          <label for="setKopUnit">Nama Unit / Instalasi (untuk identitas laporan)</label>
+          <input type="text" id="setKopUnit" placeholder="contoh: INSTALASI HEMODIALISA" />
+          <label for="setKopAlamat">Alamat Lengkap &amp; Telepon/Fax</label>
+          <input type="text" id="setKopAlamat" placeholder="contoh: Jl. Kiastramanggala, Beleendah Kabupaten Bandung Telepon (022)5940872 Fax.(022)5941709" />
+          <label for="setKopKontak">Website &amp; Email (opsional)</label>
+          <input type="text" id="setKopKontak" placeholder="contoh: Website: https://rsudwelasasih.jabarprov.go.id email: rsudwelasasih@jabarprov.go.id" />
+          <label for="setKopKota">Kota &amp; Kode Pos</label>
+          <input type="text" id="setKopKota" placeholder="contoh: BANDUNG 40375" />
+
+          <label style="font-size:12.5px;font-weight:700;color:var(--navy-deep);margin-top:20px;">Penamaan Jenjang Karir (PK)</label>
+          <div class="grid-2">
+            <div><label for="setPkLabelPK1">Label untuk PK1</label><input type="text" id="setPkLabelPK1" placeholder="contoh: PK I" /></div>
+            <div><label for="setPkLabelPK2">Label untuk PK2</label><input type="text" id="setPkLabelPK2" placeholder="contoh: PK II" /></div>
+            <div><label for="setPkLabelPK3">Label untuk PK3</label><input type="text" id="setPkLabelPK3" placeholder="contoh: PK III" /></div>
+            <div><label for="setPkLabelPK4">Label untuk PK4</label><input type="text" id="setPkLabelPK4" placeholder="contoh: PK IV" /></div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btnSaveSettings">Simpan Pengaturan</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: TAMBAH/EDIT AKUN (ADMIN) ===================== -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal">
+    <h3 id="userModalTitle">Tambah Akun</h3>
+    <div class="modal-sub">Isi data akun di bawah ini.</div>
+
+    <label for="userModalUsername">Username</label>
+    <input type="text" id="userModalUsername" placeholder="contoh: siti.ners" autocomplete="off" />
+
+    <label for="userModalNama">Nama Lengkap</label>
+    <input type="text" id="userModalNama" placeholder="contoh: Siti Aminah, Ners" autocomplete="off" />
+
+    <label for="userModalNIP">NIP (akan tercetak di laporan logbook)</label>
+    <input type="text" id="userModalNIP" placeholder="contoh: 198210082023211002" autocomplete="off" />
+
+    <label for="userModalPK">Jenjang Karir (PK)</label>
+    <select id="userModalPK"></select>
+
+    <label>Peran (boleh pilih lebih dari satu)</label>
+    <div style="display:flex; gap:14px; margin-bottom:14px; flex-wrap:wrap;">
+      <label style="display:flex; align-items:center; gap:6px; font-weight:500; font-size:13px; margin-bottom:0;">
+        <input type="checkbox" id="roleCheckPerawat" style="width:auto;margin:0;" /> Perawat
+      </label>
+      <label style="display:flex; align-items:center; gap:6px; font-weight:500; font-size:13px; margin-bottom:0;">
+        <input type="checkbox" id="roleCheckVerifikator" style="width:auto;margin:0;" /> Verifikator
+      </label>
+      <label style="display:flex; align-items:center; gap:6px; font-weight:500; font-size:13px; margin-bottom:0;">
+        <input type="checkbox" id="roleCheckAdmin" style="width:auto;margin:0;" /> Admin
+      </label>
+      <label style="display:flex; align-items:center; gap:6px; font-weight:500; font-size:13px; margin-bottom:0;">
+        <input type="checkbox" id="roleCheckKepalaRuangan" style="width:auto;margin:0;" /> Kepala Ruangan
+      </label>
+    </div>
+
+    <label for="userModalPassword" id="userModalPasswordLabel">Password</label>
+    <input type="text" id="userModalPassword" placeholder="Kosongkan jika tidak ingin mengubah password" autocomplete="off" />
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnCloseUserModal">Batal</button>
+      <button class="btn btn-primary" id="btnSaveUserModal">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: GANTI PASSWORD SENDIRI ===================== -->
+<div class="modal-overlay" id="passwordModal">
+  <div class="modal">
+    <h3>Ganti Password</h3>
+    <div class="modal-sub">Masukkan password lama dan password baru Anda.</div>
+
+    <label for="oldPasswordInput">Password Lama</label>
+    <input type="password" id="oldPasswordInput" autocomplete="current-password" />
+
+    <label for="newPasswordInput">Password Baru</label>
+    <input type="password" id="newPasswordInput" placeholder="Minimal 4 karakter" autocomplete="new-password" />
+
+    <label for="confirmPasswordInput">Ulangi Password Baru</label>
+    <input type="password" id="confirmPasswordInput" autocomplete="new-password" />
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnClosePasswordModal">Batal</button>
+      <button class="btn btn-primary" id="btnSubmitPasswordChange">Simpan Password Baru</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: INPUT PENGAJUAN HARIAN ===================== -->
+<div class="modal-overlay" id="dayModal">
+  <div class="modal">
+    <h3 id="dayModalTitle">Pengajuan Aktivitas</h3>
+    <div class="modal-sub" id="dayModalSub">-</div>
+
+    <div class="day-existing" id="dayExistingList"></div>
+
+    <label for="butirSelect">Butir Kegiatan</label>
+    <div class="butir-pick-row">
+      <select id="butirSelect"></select>
+      <input type="text" id="butirJumpInput" class="butir-jump-input" placeholder="🔍 lompat ke huruf..." autocomplete="off" title="Ketik huruf awal untuk langsung melompat ke butir kegiatan yang dicari" />
+    </div>
+
+    <label for="noRMInput">No. Medrek (RM) Pasien</label>
+    <input type="text" id="noRMInput" placeholder="contoh: 00-12-34-56" />
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnCloseDayModal">Tutup</button>
+      <button class="btn btn-primary" id="btnSubmitPengajuan">Ajukan Aktivitas</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: TANDA TANGAN PERAWAT SEBELUM CETAK (OPSIONAL) ===================== -->
+<div class="modal-overlay" id="ttdPerawatModal">
+  <div class="modal">
+    <h3>Tanda Tangan Anda (Opsional)</h3>
+    <div class="modal-sub">
+      Bubuhkan tanda tangan untuk laporan ini, atau lewati saja jika Anda akan
+      menandatangani secara manual di atas kertas hasil cetak.
+    </div>
+    <div id="ttdPerawatPadWrap" style="border:2px dashed var(--line);border-radius:10px;background:#fafaf8;overflow:hidden;cursor:crosshair;touch-action:none;">
+      <canvas id="ttdPerawatCanvas" style="display:block;width:100%;height:160px;"></canvas>
+    </div>
+    <p style="font-size:11px;color:var(--ink-soft);margin:6px 0 0;">Tanda tangan ini hanya dipakai untuk laporan kali ini, tidak disimpan permanen ke server.</p>
+    <div class="modal-actions" style="flex-wrap:wrap;">
+      <button class="btn btn-ghost" id="btnClearTtdPerawat">Hapus Coretan</button>
+      <button class="btn btn-ghost" id="btnUploadTtdPerawat">📁 Unggah dari File</button>
+      <input type="file" id="fileUploadTtdPerawat" accept="image/*" style="display:none;" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnLewatiTtdPerawat">Lewati, Cetak Tanpa TTD</button>
+      <button class="btn btn-primary" id="btnPakaiTtdPerawat">Pakai Tanda Tangan Ini &amp; Lanjut Cetak</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: TAMBAH BANYAK BUTIR KEGIATAN (PASTE) ===================== -->
+<div class="modal-overlay" id="bulkButirModal">
+  <div class="modal" style="max-width:560px;">
+    <h3>Tambah Banyak Butir Kegiatan</h3>
+    <div class="modal-sub">
+      Tempel (paste) daftar butir kegiatan dari dokumen lain. <strong>Satu baris = satu butir kegiatan.</strong>
+      Penomoran atau tanda seperti "1.", "-", "•" di awal baris akan otomatis dihapus.
+    </div>
+    <label for="bulkButirTextarea">Daftar Butir Kegiatan</label>
+    <textarea id="bulkButirTextarea" rows="10" style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13.5px;font-family:inherit;margin-bottom:14px;background:var(--paper);resize:vertical;" placeholder="contoh:
+1. Melakukan pengkajian keperawatan dasar pada pasien pra hemodialisis
+2. Mengukur dan mencatat tanda-tanda vital pasien HD
+3. Menyiapkan mesin dan set hemodialisis sesuai SPO"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnCloseBulkButirModal">Batal</button>
+      <button class="btn btn-primary" id="btnSubmitBulkButir">Tambahkan ke Daftar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">-</div>
+
+<script>
+/* =========================================================
+   KONFIGURASI
+   Ganti API_URL dengan URL Web App hasil deploy Google Apps Script
+   ========================================================= */
+const CONFIG = {
+  API_URL: "https://script.google.com/macros/s/AKfycbxTeEWfIBhJt8Nz7mB2Bt9Us7BT_KN5jtbvR0fJa6JJyYE-h0BB2L5lXDc8lhYfp5U/exec",
+};
+
+/* =========================================================
+   DATA DEFAULT BUTIR KEGIATAN (dipakai sebagai contoh acak
+   jika sheet ButirKegiatan masih kosong untuk PK terkait)
+   ========================================================= */
 const BUTIR_KEGIATAN_DEFAULT = {
   PK1: [
     "Melakukan pengkajian keperawatan dasar pada pasien pra hemodialisis",
@@ -45,512 +840,2139 @@ const BUTIR_KEGIATAN_DEFAULT = {
   ],
 };
 
-const SETTINGS_DEFAULT = {
-  kopInstansi1: "PEMERINTAH DAERAH PROVINSI JAWA BARAT",
-  kopInstansi2: "DINAS KESEHATAN",
-  kopNamaRS: "UOBK RUMAH SAKIT UMUM DAERAH WELAS ASIH",
-  kopUnit: "INSTALASI HEMODIALISA",
-  kopAlamat: "Jl. Kiastramanggala, Beleendah Kabupaten Bandung Telepon (022)5940872 Fax.(022)5941709",
-  kopKontak: "Website: https://rsudwelasasih.jabarprov.go.id email: rsudwelasasih@jabarprov.go.id",
-  kopKota: "BANDUNG 40375",
-  pkLabelPK1: "PK I", pkLabelPK2: "PK II", pkLabelPK3: "PK III", pkLabelPK4: "PK IV",
+const LOGO_JABAR_B64 = "data:image/png;base64,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";
+
+const BULAN_NAMA = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+const HARI_NAMA = ["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
+const ROLE_LABEL = { perawat: "Perawat", verifikator: "Verifikator", admin: "Admin" };
+
+/* =========================================================
+   STATE
+   ========================================================= */
+let STATE = {
+  user: null,             // {username, nama, pk, roles:[...], nip}
+  activeTab: null,        // "perawat" | "verifikator" | "admin"
+  currentPK: null,
+  butirKegiatan: {},
+  pengajuanBulanIni: [],
+  calMonth: new Date().getMonth(),
+  calYear: new Date().getFullYear(),
+  selectedDateStr: null,
+  verifData: [],
+  verifSelectedIds: new Set(),
+  isOfflineMode: false,
+
+  // admin state
+  adminUsers: [],
+  adminCurrentPK: "PK1",
+  adminButir: {},
+  editingUsername: null, // null = mode tambah baru
+
+  // pengaturan (kop surat & penamaan PK)
+  settings: {},
+  pkLabels: { PK1: "PK 1", PK2: "PK 2", PK3: "PK 3", PK4: "PK 4" },
+  bulkButirTarget: "perawat", // "perawat" | "admin"
 };
 
-function doPost(e) {
-  let result;
+function pkLabel(pk) {
+  if (!pk || pk === "-") return "-";
+  return (STATE.pkLabels && STATE.pkLabels[pk]) || pk.replace("PK", "PK ");
+}
+
+/* =========================================================
+   UTIL: PANGGIL API (Google Apps Script) dengan fallback
+   localStorage jika CONFIG.API_URL belum diisi (mode demo)
+   ========================================================= */
+async function apiCall(action, params = {}) {
+  const isConfigured = CONFIG.API_URL && !CONFIG.API_URL.includes("PASTE_URL_WEBAPP");
+
+  if (!isConfigured) {
+    STATE.isOfflineMode = true;
+    return localFallback(action, params);
+  }
+
   try {
-    const action = e.parameter.action;
-    const handler = ACTIONS[action];
-    if (!handler) {
-      result = { success: false, message: "Aksi tidak dikenali: " + action };
-    } else {
-      result = handler(e.parameter);
+    const body = new URLSearchParams({ action, ...stringifyParams(params) });
+    const res = await fetch(CONFIG.API_URL, { method: "POST", body });
+
+    if (!res.ok) {
+      throw new Error("Server merespons dengan status " + res.status);
     }
+
+    const text = await res.text();
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch (parseErr) {
+      throw new Error("Respons server bukan JSON yang valid: " + text.slice(0, 150));
+    }
+
+    return json;
   } catch (err) {
-    result = { success: false, message: "Server error: " + err.message };
+    // PENTING: karena CONFIG.API_URL sudah diisi (mode live, bukan demo),
+    // error di sini TIDAK diam-diam dialihkan ke localStorage lagi.
+    console.error("API error (mode live):", err);
+    return {
+      success: false,
+      message: "Gagal terhubung ke server: " + err.message + " — Periksa koneksi internet Anda dan coba lagi.",
+      isConnectionError: true,
+    };
   }
-  return ContentService.createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
 }
 
-function doGet(e) {
-  return ContentService.createTextOutput(JSON.stringify({ success: true, message: "Backend Logbook HD aktif." }))
-    .setMimeType(ContentService.MimeType.JSON);
+function stringifyParams(params) {
+  const out = {};
+  for (const k in params) {
+    out[k] = typeof params[k] === "object" ? JSON.stringify(params[k]) : params[k];
+  }
+  return out;
 }
 
-const ACTIONS = {
-  login: actionLogin,
-  changePassword: actionChangePassword,
-  getUserSuggestions: actionGetUserSuggestions,
-  getSettings: actionGetSettings,
-  adminSaveSettings: actionAdminSaveSettings,
-  getButirKegiatan: actionGetButirKegiatan,
-  saveButirKegiatan: actionSaveButirKegiatan,
-  getPengajuan: actionGetPengajuan,
-  addPengajuan: actionAddPengajuan,
-  getAllPengajuanForVerifikator: actionGetAllPengajuanForVerifikator,
-  updateStatusPengajuan: actionUpdateStatusPengajuan,
-  bulkUpdateStatus: actionBulkUpdateStatus,
-  adminGetUsers: actionAdminGetUsers,
-  adminSaveUser: actionAdminSaveUser,
-  adminDeleteUser: actionAdminDeleteUser,
-  adminGetAllButir: actionAdminGetAllButir,
-  adminSaveButirForPK: actionAdminSaveButirForPK,
-  saveVerifikatorSignature: actionSaveVerifikatorSignature,
-  getVerifikatorSignature: actionGetVerifikatorSignature,
-  getSignatureByName: actionGetSignatureByName,
-  getKepalaRuangan: actionGetKepalaRuangan,
-};
+/* ---- Fallback mode demo (localStorage) — dipakai jika API_URL belum disetel ---- */
+function lsGet(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
+}
+function lsSet(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
 
-function setupSheets() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+function seedDemoUsersIfEmpty() {
+  let users = lsGet("demo_users_v2", null);
+  if (!users) {
+    users = {
+      "admin": { username: "admin", password: "admin123", nama: "Administrator Sistem", pk: "-", role: "admin", nip: "" },
+      "epi.ners": { username: "epi.ners", password: "hd2026", nama: "Epi Abdul Wahid, AMK", pk: "PK2", role: "perawat,verifikator,admin", nip: "198210082023211002" },
+      "siti.ners": { username: "siti.ners", password: "siti123", nama: "Siti Aminah, Ners", pk: "PK1", role: "perawat", nip: "" },
+    };
+    lsSet("demo_users_v2", users);
+  }
+  return users;
+}
 
-  let shUsers = ss.getSheetByName(SHEET_USERS);
-  if (!shUsers) shUsers = ss.insertSheet(SHEET_USERS);
-  if (shUsers.getDataRange().getNumRows() < 2) {
-    shUsers.appendRow(["username", "password", "nama", "nip", "pk", "role", "signature"]);
-    shUsers.appendRow(["admin", "admin123", "Administrator", "", "-", "admin", ""]);
-  } else {
-    // Pastikan kolom signature ada walau sheet sudah pernah dibuat sebelumnya
-    const headers = shUsers.getRange(1, 1, 1, shUsers.getLastColumn()).getValues()[0];
-    if (headers.indexOf("signature") === -1) {
-      shUsers.getRange(1, headers.length + 1).setValue("signature");
+function localFallback(action, params) {
+  switch (action) {
+    case "getUserSuggestions": {
+      const users = seedDemoUsersIfEmpty();
+      const list = Object.values(users).map(u => ({ username: u.username, nama: u.nama || "" }));
+      return { success: true, data: list };
     }
+    case "getSettings": {
+      const defaults = {
+        kopInstansi1: "PEMERINTAH DAERAH PROVINSI JAWA BARAT",
+        kopInstansi2: "DINAS KESEHATAN",
+        kopNamaRS: "UOBK RUMAH SAKIT UMUM DAERAH WELAS ASIH",
+        kopUnit: "INSTALASI HEMODIALISA",
+        kopAlamat: "Jl. Kiastramanggala, Beleendah Kabupaten Bandung Telepon (022)5940872 Fax.(022)5941709",
+        kopKontak: "Website: https://rsudwelasasih.jabarprov.go.id email: rsudwelasasih@jabarprov.go.id",
+        kopKota: "BANDUNG 40375",
+        pkLabelPK1: "PK I", pkLabelPK2: "PK II", pkLabelPK3: "PK III", pkLabelPK4: "PK IV",
+      };
+      const saved = lsGet("demo_settings", {});
+      return { success: true, data: Object.assign({}, defaults, saved) };
+    }
+    case "adminSaveSettings": {
+      let incoming;
+      try { incoming = typeof params.settings === "string" ? JSON.parse(params.settings) : params.settings; }
+      catch (e) { return { success: false, message: "Format pengaturan tidak valid." }; }
+      const saved = lsGet("demo_settings", {});
+      Object.assign(saved, incoming);
+      lsSet("demo_settings", saved);
+      return { success: true, message: "Pengaturan berhasil disimpan (mode demo lokal)." };
+    }
+    case "login": {
+      const username = (params.username || "").trim().toLowerCase();
+      const password = String(params.password || "");
+      if (!username) return { success: false, message: "Username tidak boleh kosong." };
+      if (!password) return { success: false, message: "Password tidak boleh kosong." };
+      let users = seedDemoUsersIfEmpty();
+      const user = users[username];
+      if (!user) return { success: false, message: "Username tidak ditemukan. Hubungi admin untuk didaftarkan." };
+      if (String(user.password) !== password) return { success: false, message: "Password salah. Silakan coba lagi." };
+      return {
+        success: true,
+        user: {
+          username: user.username, nama: user.nama, pk: String(user.pk || "").toUpperCase(),
+          roles: String(user.role || "").split(",").map(r => r.trim().toLowerCase()).filter(Boolean),
+          nip: user.nip || "",
+        },
+      };
+    }
+    case "changePassword": {
+      const username = (params.username || "").trim().toLowerCase();
+      let users = seedDemoUsersIfEmpty();
+      const user = users[username];
+      if (!user) return { success: false, message: "Username tidak ditemukan." };
+      if (String(user.password) !== String(params.oldPassword || "")) {
+        return { success: false, message: "Password lama tidak sesuai." };
+      }
+      if (!params.newPassword || params.newPassword.length < 4) {
+        return { success: false, message: "Password baru minimal 4 karakter." };
+      }
+      user.password = params.newPassword;
+      lsSet("demo_users_v2", users);
+      return { success: true, message: "Password berhasil diperbarui (mode demo lokal)." };
+    }
+    case "getButirKegiatan": {
+      const pk = params.pk;
+      let store = lsGet("demo_butir", {});
+      if (!store[pk]) {
+        store[pk] = (BUTIR_KEGIATAN_DEFAULT[pk] || []).map((teks, i) => ({
+          id: pk + "-" + String(i+1).padStart(2,"0"), pk, teks, aktif: true,
+        }));
+        lsSet("demo_butir", store);
+      }
+      return { success: true, data: store[pk] };
+    }
+    case "saveButirKegiatan": {
+      const pk = params.pk;
+      const items = typeof params.items === "string" ? JSON.parse(params.items) : params.items;
+      let store = lsGet("demo_butir", {});
+      store[pk] = items.map((it, i) => ({
+        id: it.id || (pk + "-" + String(i+1).padStart(2,"0")), pk, teks: it.teks, aktif: true,
+      }));
+      lsSet("demo_butir", store);
+      return { success: true, message: "Tersimpan (mode demo lokal)." };
+    }
+    case "getPengajuan": {
+      const username = (params.username||"").toLowerCase();
+      const bulan = params.bulan;
+      let all = lsGet("demo_pengajuan", []);
+      all = all.filter(p => p.username === username && (!bulan || p.tanggal.startsWith(bulan)));
+      return { success: true, data: all };
+    }
+    case "addPengajuan": {
+      let all = lsGet("demo_pengajuan", []);
+      const id = "PJN-" + Date.now() + "-" + Math.floor(Math.random()*1000);
+      all.push({
+        id, tanggal: params.tanggal, username: (params.username||"").toLowerCase(),
+        nama: params.nama, pk: params.pk, butirId: params.butirId, butirTeks: params.butirTeks,
+        noRM: params.noRM, status: "pending", catatanVerifikator: "", verifikatorOleh: "",
+        waktuInput: new Date().toISOString(), waktuVerifikasi: "",
+      });
+      lsSet("demo_pengajuan", all);
+      return { success: true, message: "Pengajuan tersimpan (mode demo lokal).", id };
+    }
+    case "getAllPengajuanForVerifikator": {
+      const bulan = params.bulan;
+      let all = lsGet("demo_pengajuan", []);
+      if (bulan) all = all.filter(p => p.tanggal.startsWith(bulan));
+      all.sort((a,b)=> new Date(b.waktuInput) - new Date(a.waktuInput));
+      return { success: true, data: all };
+    }
+    case "updateStatusPengajuan": {
+      let all = lsGet("demo_pengajuan", []);
+      const idx = all.findIndex(p => p.id === params.id);
+      if (idx === -1) return { success:false, message:"Tidak ditemukan." };
+      all[idx].status = params.status;
+      all[idx].catatanVerifikator = params.catatan || "";
+      all[idx].verifikatorOleh = params.verifikatorOleh || "";
+      all[idx].waktuVerifikasi = new Date().toISOString();
+      lsSet("demo_pengajuan", all);
+      return { success:true, message:"Status diperbarui (mode demo lokal)." };
+    }
+    case "bulkUpdateStatus": {
+      const ids = typeof params.ids === "string" ? JSON.parse(params.ids) : params.ids;
+      let all = lsGet("demo_pengajuan", []);
+      let count = 0;
+      all = all.map(p => {
+        if (ids.includes(p.id)) {
+          count++;
+          return { ...p, status: params.status, verifikatorOleh: params.verifikatorOleh || "", waktuVerifikasi: new Date().toISOString() };
+        }
+        return p;
+      });
+      lsSet("demo_pengajuan", all);
+      return { success:true, message: count + " pengajuan diperbarui (mode demo lokal)." };
+    }
+
+    /* ---- ADMIN (mode demo) ---- */
+    case "adminGetUsers": {
+      let users = seedDemoUsersIfEmpty();
+      const list = Object.values(users).map(u => ({ username: u.username, nama: u.nama, pk: String(u.pk||"").toUpperCase(), role: u.role, nip: u.nip || "" }));
+      return { success: true, data: list };
+    }
+    case "adminSaveUser": {
+      let users = seedDemoUsersIfEmpty();
+      const username = (params.username || "").trim().toLowerCase();
+      if (!username) return { success: false, message: "Username tidak boleh kosong." };
+      if (!params.role) return { success: false, message: "Role tidak boleh kosong." };
+      const existing = users[username];
+      if (existing) {
+        existing.nama = params.nama || "";
+        existing.nip = params.nip !== undefined ? String(params.nip) : (existing.nip || "");
+        existing.pk = String(params.pk || "").toUpperCase();
+        existing.role = params.role;
+        if (params.password) existing.password = params.password;
+        lsSet("demo_users_v2", users);
+        return { success: true, message: "Akun '" + username + "' berhasil diperbarui (mode demo lokal)." };
+      }
+      if (!params.password) return { success: false, message: "Password wajib diisi untuk akun baru." };
+      users[username] = {
+        username, password: params.password, nama: params.nama || "", nip: params.nip || "",
+        pk: String(params.pk || "").toUpperCase(), role: params.role,
+      };
+      lsSet("demo_users_v2", users);
+      return { success: true, message: "Akun '" + username + "' berhasil ditambahkan (mode demo lokal)." };
+    }
+    case "adminDeleteUser": {
+      let users = seedDemoUsersIfEmpty();
+      const username = (params.username || "").trim().toLowerCase();
+      if (!users[username]) return { success: false, message: "Akun tidak ditemukan." };
+      delete users[username];
+      lsSet("demo_users_v2", users);
+      return { success: true, message: "Akun '" + username + "' berhasil dihapus (mode demo lokal)." };
+    }
+    case "adminGetAllButir": {
+      let store = lsGet("demo_butir", {});
+      const grouped = { PK1: [], PK2: [], PK3: [], PK4: [] };
+      ["PK1","PK2","PK3","PK4"].forEach(pk => {
+        if (!store[pk]) {
+          store[pk] = (BUTIR_KEGIATAN_DEFAULT[pk] || []).map((teks, i) => ({
+            id: pk + "-" + String(i+1).padStart(2,"0"), pk, teks, aktif: true,
+          }));
+        }
+        grouped[pk] = store[pk].map(b => ({ id: b.id, teks: b.teks }));
+      });
+      lsSet("demo_butir", store);
+      return { success: true, data: grouped };
+    }
+    case "adminSaveButirForPK": {
+      const pk = params.pk;
+      const items = typeof params.items === "string" ? JSON.parse(params.items) : params.items;
+      let store = lsGet("demo_butir", {});
+      store[pk] = items.map((it, i) => ({
+        id: it.id || (pk + "-" + String(i+1).padStart(2,"0")), pk, teks: it.teks, aktif: true,
+      }));
+      lsSet("demo_butir", store);
+      return { success: true, message: "Butir kegiatan " + pk + " berhasil disimpan (mode demo lokal)." };
+    }
+
+    default:
+      return { success: false, message: "Aksi tidak dikenali (demo): " + action };
+  }
+}
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+function showToast(msg, isError = false) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  if (isError) t.classList.add("toast-error"); else t.classList.remove("toast-error");
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.classList.remove("show"), isError ? 8000 : 2400);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str || "";
+  return div.innerHTML;
+}
+
+/* =========================================================
+   AUTOCOMPLETE GENERIK (pencarian username & butir kegiatan)
+   ========================================================= */
+function bindAutocomplete(opts) {
+  // opts: inputEl, listEl, wrapEl, getItems: ()=>[{label, sub, searchText, value}], onPick(item), minChars
+  const minChars = opts.minChars || 1;
+  let currentItems = [];
+  let activeIndex = -1;
+
+  function close() {
+    opts.listEl.classList.remove("show");
+    opts.listEl.innerHTML = "";
+    currentItems = [];
+    activeIndex = -1;
   }
 
-  let shButir = ss.getSheetByName(SHEET_BUTIR);
-  if (!shButir) {
-    shButir = ss.insertSheet(SHEET_BUTIR);
-    shButir.appendRow(["id", "pk", "teks", "aktif"]);
-    PK_LIST.forEach(pk => {
-      BUTIR_KEGIATAN_DEFAULT[pk].forEach((teks, i) => {
-        shButir.appendRow([pk + "-" + String(i + 1).padStart(2, "0"), pk, teks, true]);
+  function updateActive() {
+    const els = opts.listEl.querySelectorAll(".ac-item");
+    els.forEach((el, i) => el.classList.toggle("active", i === activeIndex));
+    if (activeIndex >= 0 && els[activeIndex]) els[activeIndex].scrollIntoView({ block: "nearest" });
+  }
+
+  function pick(idx) {
+    const item = currentItems[idx];
+    if (!item) return;
+    opts.onPick(item);
+    close();
+  }
+
+  function open(items) {
+    currentItems = items;
+    activeIndex = -1;
+    if (!items.length) {
+      opts.listEl.innerHTML = `<li class="ac-empty">Tidak ada hasil ditemukan.</li>`;
+      opts.listEl.classList.add("show");
+      return;
+    }
+    opts.listEl.innerHTML = items.map((it, i) => `
+      <li class="ac-item" data-idx="${i}">
+        <div>${escapeHtml(it.label)}</div>
+        ${it.sub ? `<div class="ac-sub">${escapeHtml(it.sub)}</div>` : ""}
+      </li>
+    `).join("");
+    opts.listEl.classList.add("show");
+    opts.listEl.querySelectorAll(".ac-item").forEach(el => {
+      el.addEventListener("mousedown", e => {
+        e.preventDefault();
+        pick(parseInt(el.dataset.idx, 10));
       });
     });
   }
 
-  let shPengajuan = ss.getSheetByName(SHEET_PENGAJUAN);
-  if (!shPengajuan) {
-    shPengajuan = ss.insertSheet(SHEET_PENGAJUAN);
-    shPengajuan.appendRow([
-      "id", "tanggal", "username", "nama", "pk", "butirId", "butirTeks", "noRM",
-      "status", "catatanVerifikator", "verifikatorOleh", "waktuInput", "waktuVerifikasi",
-    ]);
+  function refresh() {
+    const q = opts.inputEl.value.trim().toLowerCase();
+    if (q.length < minChars) { close(); return; }
+    const all = opts.getItems();
+    const filtered = all.filter(it => it.searchText.toLowerCase().includes(q)).slice(0, 8);
+    open(filtered);
   }
 
-  let shSettings = ss.getSheetByName(SHEET_SETTINGS);
-  if (!shSettings) {
-    shSettings = ss.insertSheet(SHEET_SETTINGS);
-    shSettings.appendRow(["key", "value"]);
-    Object.keys(SETTINGS_DEFAULT).forEach(k => {
-      shSettings.appendRow([k, SETTINGS_DEFAULT[k]]);
-    });
-  }
-
-  const def = ss.getSheetByName("Sheet1");
-  if (def && ss.getSheets().length > 1) {
-    try { ss.deleteSheet(def); } catch (e) {}
-  }
-
-  Logger.log("Setup selesai (aman dijalankan ulang, data lama tidak terhapus).");
-}
-
-function getSheet(name) {
-  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
-}
-
-function sheetToObjects(sheet) {
-  const data = sheet.getDataRange().getValues();
-  if (data.length < 2) return [];
-  const headers = data[0];
-  const rows = data.slice(1).filter(r => r.join("") !== "");
-  return rows.map(row => {
-    const obj = {};
-    headers.forEach((h, i) => { obj[h] = row[i]; });
-    return obj;
-  });
-}
-
-function findRowIndexByValue(sheet, colIndex1Based, value) {
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][colIndex1Based - 1]).toLowerCase() === String(value).toLowerCase()) {
-      return i + 1;
+  opts.inputEl.addEventListener("input", refresh);
+  opts.inputEl.addEventListener("focus", refresh);
+  opts.inputEl.addEventListener("keydown", e => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!opts.listEl.classList.contains("show")) { refresh(); return; }
+      activeIndex = Math.min(activeIndex + 1, currentItems.length - 1);
+      updateActive();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      activeIndex = Math.max(activeIndex - 1, 0);
+      updateActive();
+    } else if (e.key === "Enter") {
+      if (opts.listEl.classList.contains("show") && activeIndex >= 0) {
+        e.preventDefault();
+        pick(activeIndex);
+      } else if (opts.onEnterNoSelection) {
+        opts.onEnterNoSelection();
+      }
+    } else if (e.key === "Escape") {
+      close();
     }
-  }
-  return -1;
+  });
+  document.addEventListener("click", e => {
+    if (!opts.wrapEl.contains(e.target)) close();
+  });
+
+  return { close, refresh };
 }
 
-function parseMaybeJson(value) {
-  if (typeof value !== "string") return value;
-  try { return JSON.parse(value); } catch (e) { return value; }
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function lock(fn) {
-  const lk = LockService.getScriptLock();
-  lk.waitLock(10000);
+/* =========================================================
+   LOGIN
+   ========================================================= */
+STATE.userSuggestions = [];
+async function loadUserSuggestions() {
+  if (STATE.userSuggestions.length) return;
   try {
-    return fn();
-  } finally {
-    lk.releaseLock();
+    const res = await apiCall("getUserSuggestions", {});
+    STATE.userSuggestions = res.data || [];
+  } catch (e) { /* gagal diam-diam, autocomplete cukup berhenti tanpa hasil */ }
+}
+loadUserSuggestions();
+
+bindAutocomplete({
+  inputEl: document.getElementById("usernameInput"),
+  listEl: document.getElementById("usernameAcList"),
+  wrapEl: document.getElementById("usernameInput").closest(".ac-wrap"),
+  getItems: () => STATE.userSuggestions.map(u => ({
+    label: u.nama || u.username,
+    sub: u.nama ? u.username : "",
+    searchText: `${u.nama || ""} ${u.username}`,
+    value: u.username,
+  })),
+  onPick: item => {
+    document.getElementById("usernameInput").value = item.value;
+    document.getElementById("passwordInput").focus();
+  },
+});
+
+document.getElementById("btnLogin").addEventListener("click", doLogin);
+document.getElementById("usernameInput").addEventListener("keydown", e => { if (e.key === "Enter" && !document.getElementById("usernameAcList").classList.contains("show")) document.getElementById("passwordInput").focus(); });
+document.getElementById("passwordInput").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+
+async function doLogin() {
+  const username = document.getElementById("usernameInput").value.trim();
+  const password = document.getElementById("passwordInput").value;
+  const msgEl = document.getElementById("loginMsg");
+  const btn = document.getElementById("btnLogin");
+  msgEl.textContent = "";
+  if (!username) { msgEl.textContent = "Mohon isi username terlebih dahulu."; return; }
+  if (!password) { msgEl.textContent = "Mohon isi password terlebih dahulu."; return; }
+
+  btn.disabled = true; btn.textContent = "Memeriksa...";
+  const res = await apiCall("login", { username, password });
+  btn.disabled = false; btn.textContent = "Masuk";
+
+  if (!res.success) {
+    msgEl.textContent = res.message || "Login gagal.";
+    return;
+  }
+  STATE.user = res.user;
+  sessionStorage.setItem("logbookhd_user", JSON.stringify(res.user));
+  enterApp();
+}
+
+document.getElementById("btnLogout").addEventListener("click", () => {
+  sessionStorage.removeItem("logbookhd_user");
+  STATE.user = null;
+  document.getElementById("appView").style.display = "none";
+  document.getElementById("loginView").style.display = "flex";
+  document.getElementById("usernameInput").value = "";
+  document.getElementById("passwordInput").value = "";
+});
+
+/* coba auto-login dari sessionStorage */
+(function tryAutoLogin() {
+  const saved = sessionStorage.getItem("logbookhd_user");
+  if (saved) {
+    try {
+      STATE.user = JSON.parse(saved);
+      enterApp();
+    } catch {}
+  }
+})();
+
+/* =========================================================
+   GANTI PASSWORD
+   ========================================================= */
+document.getElementById("btnGantiPassword").addEventListener("click", () => {
+  document.getElementById("oldPasswordInput").value = "";
+  document.getElementById("newPasswordInput").value = "";
+  document.getElementById("confirmPasswordInput").value = "";
+  document.getElementById("passwordModal").classList.add("show");
+});
+document.getElementById("btnClosePasswordModal").addEventListener("click", () => {
+  document.getElementById("passwordModal").classList.remove("show");
+});
+document.getElementById("btnSubmitPasswordChange").addEventListener("click", async () => {
+  const oldPassword = document.getElementById("oldPasswordInput").value;
+  const newPassword = document.getElementById("newPasswordInput").value;
+  const confirmPassword = document.getElementById("confirmPasswordInput").value;
+
+  if (!oldPassword || !newPassword || !confirmPassword) {
+    showToast("Mohon lengkapi semua field."); return;
+  }
+  if (newPassword !== confirmPassword) {
+    showToast("Konfirmasi password baru tidak cocok."); return;
+  }
+  if (newPassword.length < 4) {
+    showToast("Password baru minimal 4 karakter."); return;
+  }
+
+  const btn = document.getElementById("btnSubmitPasswordChange");
+  btn.disabled = true; btn.textContent = "Menyimpan...";
+  const res = await apiCall("changePassword", { username: STATE.user.username, oldPassword, newPassword });
+  btn.disabled = false; btn.textContent = "Simpan Password Baru";
+
+  if (res.success) {
+    showToast("Password berhasil diperbarui.");
+    document.getElementById("passwordModal").classList.remove("show");
+  } else {
+    showToast(res.message || "Gagal memperbarui password.");
+  }
+});
+
+/* =========================================================
+   MASUK APLIKASI
+   ========================================================= */
+async function enterApp() {
+  document.getElementById("loginView").style.display = "none";
+  document.getElementById("appView").style.display = "block";
+
+  // reset state sesi sebelumnya (penting saat ganti akun tanpa reload halaman)
+  STATE.currentPK = null;
+  STATE.butirKegiatan = {};
+  STATE.pengajuanBulanIni = [];
+  STATE.verifData = [];
+  STATE.verifSelectedIds = new Set();
+  STATE.adminUsers = [];
+  STATE.adminButir = {};
+  STATE.adminCurrentPK = "PK1";
+  STATE.activeTab = null;
+  document.getElementById("adminPkSwitchRow").innerHTML = "";
+  document.getElementById("filterBulanVerif").innerHTML = "";
+
+  await loadSettings();
+
+  const u = STATE.user;
+  document.getElementById("avatarInitial").textContent = (u.nama || u.username).charAt(0).toUpperCase();
+  const roleLabels = (u.roles || []).map(r => ROLE_LABEL[r] || r).join(" + ");
+  document.getElementById("userLabel").textContent = `${u.nama || u.username} · ${roleLabels}`;
+
+  buildTabs();
+}
+
+/* =========================================================
+   PENGATURAN (Kop Surat & Penamaan PK)
+   ========================================================= */
+async function loadSettings() {
+  const res = await apiCall("getSettings", {});
+  STATE.settings = res.data || {};
+  STATE.pkLabels = {
+    PK1: STATE.settings.pkLabelPK1 || "PK 1",
+    PK2: STATE.settings.pkLabelPK2 || "PK 2",
+    PK3: STATE.settings.pkLabelPK3 || "PK 3",
+    PK4: STATE.settings.pkLabelPK4 || "PK 4",
+  };
+  refreshPKSelectOptions();
+}
+
+function refreshPKSelectOptions() {
+  const sel = document.getElementById("userModalPK");
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = "";
+  ["PK1", "PK2", "PK3", "PK4"].forEach(pk => {
+    const opt = document.createElement("option");
+    opt.value = pk;
+    opt.textContent = pkLabel(pk);
+    sel.appendChild(opt);
+  });
+  const optNone = document.createElement("option");
+  optNone.value = "-";
+  optNone.textContent = "- (khusus admin/verifikator tanpa PK)";
+  sel.appendChild(optNone);
+  if (current) sel.value = current;
+}
+
+function fillSettingsForm() {
+  document.getElementById("setKopInstansi1").value = STATE.settings.kopInstansi1 || "";
+  document.getElementById("setKopInstansi2").value = STATE.settings.kopInstansi2 || "";
+  document.getElementById("setKopNamaRS").value = STATE.settings.kopNamaRS || "";
+  document.getElementById("setKopUnit").value = STATE.settings.kopUnit || "";
+  document.getElementById("setKopAlamat").value = STATE.settings.kopAlamat || "";
+  document.getElementById("setKopKontak").value = STATE.settings.kopKontak || "";
+  document.getElementById("setKopKota").value = STATE.settings.kopKota || "";
+  document.getElementById("setPkLabelPK1").value = STATE.pkLabels.PK1 || "";
+  document.getElementById("setPkLabelPK2").value = STATE.pkLabels.PK2 || "";
+  document.getElementById("setPkLabelPK3").value = STATE.pkLabels.PK3 || "";
+  document.getElementById("setPkLabelPK4").value = STATE.pkLabels.PK4 || "";
+}
+
+document.getElementById("btnSaveSettings").addEventListener("click", async () => {
+  const settings = {
+    kopInstansi1: document.getElementById("setKopInstansi1").value.trim(),
+    kopInstansi2: document.getElementById("setKopInstansi2").value.trim(),
+    kopNamaRS: document.getElementById("setKopNamaRS").value.trim(),
+    kopUnit: document.getElementById("setKopUnit").value.trim(),
+    kopAlamat: document.getElementById("setKopAlamat").value.trim(),
+    kopKontak: document.getElementById("setKopKontak").value.trim(),
+    kopKota: document.getElementById("setKopKota").value.trim(),
+    pkLabelPK1: document.getElementById("setPkLabelPK1").value.trim() || "PK 1",
+    pkLabelPK2: document.getElementById("setPkLabelPK2").value.trim() || "PK 2",
+    pkLabelPK3: document.getElementById("setPkLabelPK3").value.trim() || "PK 3",
+    pkLabelPK4: document.getElementById("setPkLabelPK4").value.trim() || "PK 4",
+  };
+  const btn = document.getElementById("btnSaveSettings");
+  btn.disabled = true; btn.textContent = "Menyimpan...";
+  const res = await apiCall("adminSaveSettings", { settings });
+  btn.disabled = false; btn.textContent = "Simpan Pengaturan";
+
+  if (res.success) {
+    showToast("Pengaturan berhasil disimpan.");
+    await loadSettings();
+    fillSettingsForm();
+    // refresh tampilan label PK di berbagai tempat
+    if (STATE.currentPK) {
+      document.getElementById("pkBadge").textContent = pkLabel(STATE.currentPK);
+      document.getElementById("butirHeadingLabel").textContent = `Butir Kegiatan — ${pkLabel(STATE.currentPK)}`;
+    }
+    document.querySelectorAll("#pkSwitchRow .pk-pill").forEach((p, i) => { p.textContent = pkLabel(["PK1","PK2","PK3","PK4"][i]); });
+    document.querySelectorAll("#adminPkSwitchRow .pk-pill").forEach((p, i) => { p.textContent = pkLabel(["PK1","PK2","PK3","PK4"][i]); });
+    if (STATE.adminUsers.length) renderAdminUserTable();
+    if (STATE.verifData.length) renderVerifTable();
+  } else {
+    showToast(res.message || "Gagal menyimpan pengaturan.");
+  }
+});
+
+function buildTabs() {
+  const tabs = document.getElementById("mainTabs");
+  tabs.innerHTML = "";
+  const u = STATE.user;
+  const items = [];
+  if (u.roles.includes("perawat")) items.push({ key: "perawat", label: "Aktivitas Saya" });
+  if (u.roles.includes("verifikator")) items.push({ key: "verifikator", label: "Verifikasi Pengajuan" });
+  if (u.roles.includes("kepala_ruangan")) items.push({ key: "kepala_ruangan", label: "Tanda Tangan Karu" });
+  if (u.roles.includes("admin")) items.push({ key: "admin", label: "Kelola Sistem" });
+
+  if (!items.length) {
+    showToast("Akun Anda belum memiliki peran aktif. Hubungi admin.");
+    return;
+  }
+
+  tabs.style.display = items.length > 1 ? "flex" : "none";
+  items.forEach(it => {
+    const btn = document.createElement("button");
+    btn.className = "tab-btn";
+    btn.textContent = it.label;
+    btn.dataset.key = it.key;
+    btn.addEventListener("click", () => showPanel(it.key));
+    tabs.appendChild(btn);
+  });
+
+  showPanel(items[0].key);
+}
+
+async function showPanel(key) {
+  STATE.activeTab = key;
+  document.getElementById("panelPerawat").style.display = key === "perawat" ? "block" : "none";
+  document.getElementById("panelVerifikator").style.display = key === "verifikator" ? "block" : "none";
+  document.getElementById("panelKepalaRuangan").style.display = key === "kepala_ruangan" ? "block" : "none";
+  document.getElementById("panelAdmin").style.display = key === "admin" ? "block" : "none";
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.key === key));
+
+  if (key === "perawat" && !STATE.currentPK) {
+    STATE.currentPK = (STATE.user.pk && STATE.user.pk !== "-") ? STATE.user.pk : "PK1";
+    await loadPKSwitcher();
+    await loadButirKegiatan(STATE.currentPK);
+    await renderCalendar();
+    await loadRiwayat();
+  }
+  if (key === "verifikator") {
+    loadVerifikatorData();
+    // Tunda sedikit agar panel sudah ter-render sebelum ukuran canvas dihitung
+    requestAnimationFrame(() => {
+      if (typeof window.resizeSignatureCanvas === "function") window.resizeSignatureCanvas();
+      if (typeof loadSavedSignature === "function") loadSavedSignature();
+    });
+  }
+  if (key === "kepala_ruangan") {
+    requestAnimationFrame(() => {
+      if (typeof window.resizeSignatureCanvasKaru === "function") window.resizeSignatureCanvasKaru();
+      if (typeof loadSavedSignatureKaru === "function") loadSavedSignatureKaru();
+    });
+  }
+  if (key === "admin") {
+    if (!document.getElementById("adminPkSwitchRow").childElementCount) buildAdminPkSwitcher();
+    loadAdminUsers();
+    loadAdminButir(STATE.adminCurrentPK);
+    fillSettingsForm();
   }
 }
 
-function actionLogin(p) {
-  const username = String(p.username || "").trim().toLowerCase();
-  const password = String(p.password || "");
-  if (!username) return { success: false, message: "Username tidak boleh kosong." };
-  if (!password) return { success: false, message: "Password tidak boleh kosong." };
-
-  const sh = getSheet(SHEET_USERS);
-  const users = sheetToObjects(sh);
-  const user = users.find(u => String(u.username).toLowerCase() === username);
-
-  if (!user) return { success: false, message: "Username tidak ditemukan. Hubungi admin untuk didaftarkan." };
-  if (String(user.password) !== password) return { success: false, message: "Password salah. Silakan coba lagi." };
-
-  return {
-    success: true,
-    user: {
-      username: user.username,
-      nama: user.nama,
-      pk: String(user.pk || "").toUpperCase(),
-      roles: String(user.role || "").split(",").map(r => r.trim().toLowerCase()).filter(Boolean),
-      nip: user.nip || "",
-    },
-  };
+/* =========================================================
+   PK SWITCHER (perawat)
+   ========================================================= */
+async function loadPKSwitcher() {
+  const row = document.getElementById("pkSwitchRow");
+  row.innerHTML = "";
+  ["PK1","PK2","PK3","PK4"].forEach(pk => {
+    const pill = document.createElement("button");
+    pill.className = "pk-pill" + (pk === STATE.currentPK ? " active" : "");
+    pill.textContent = pkLabel(pk);
+    pill.addEventListener("click", async () => {
+      STATE.currentPK = pk;
+      document.querySelectorAll("#pkSwitchRow .pk-pill").forEach(p => p.classList.remove("active"));
+      pill.classList.add("active");
+      document.getElementById("pkBadge").textContent = pkLabel(pk);
+      await loadButirKegiatan(pk);
+      await renderCalendar();
+    });
+    row.appendChild(pill);
+  });
+  document.getElementById("pkBadge").textContent = pkLabel(STATE.currentPK);
 }
 
-function actionChangePassword(p) {
-  return lock(() => {
-    const username = String(p.username || "").trim().toLowerCase();
-    const sh = getSheet(SHEET_USERS);
-    const rowIdx = findRowIndexByValue(sh, 1, username);
-    if (rowIdx === -1) return { success: false, message: "Username tidak ditemukan." };
+/* =========================================================
+   BUTIR KEGIATAN (perawat) — render, edit, tambah, simpan
+   ========================================================= */
+async function loadButirKegiatan(pk) {
+  document.getElementById("butirHeadingLabel").textContent = `Butir Kegiatan — ${pkLabel(pk)}`;
+  const res = await apiCall("getButirKegiatan", { pk });
+  STATE.butirKegiatan[pk] = (res.data || []).map(b => ({ id: b.id, teks: b.teks }));
+  renderButirList();
+}
 
-    const headers = sh.getDataRange().getValues()[0];
-    const passCol = headers.indexOf("password") + 1;
-    const currentPassword = sh.getRange(rowIdx, passCol).getValue();
+function renderButirList() {
+  const list = document.getElementById("butirList");
+  list.innerHTML = "";
+  const items = STATE.butirKegiatan[STATE.currentPK] || [];
+  items.forEach((item, idx) => {
+    const li = document.createElement("li");
+    li.className = "butir-item";
+    li.innerHTML = `
+      <div class="butir-num">${idx + 1}</div>
+      <textarea class="butir-edit-input" data-idx="${idx}" rows="1">${escapeHtml(item.teks)}</textarea>
+      <button class="icon-btn reject" title="Hapus butir ini" data-remove="${idx}" style="flex-shrink:0;">✕</button>
+    `;
+    list.appendChild(li);
+  });
 
-    if (String(currentPassword) !== String(p.oldPassword || "")) {
-      return { success: false, message: "Password lama tidak sesuai." };
-    }
-    if (!p.newPassword || String(p.newPassword).length < 4) {
-      return { success: false, message: "Password baru minimal 4 karakter." };
-    }
-    sh.getRange(rowIdx, passCol).setValue(p.newPassword);
-    return { success: true, message: "Password berhasil diperbarui." };
+  list.querySelectorAll("textarea").forEach(ta => {
+    autoGrow(ta);
+    ta.addEventListener("input", () => autoGrow(ta));
+  });
+  list.querySelectorAll("[data-remove]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = parseInt(btn.dataset.remove, 10);
+      STATE.butirKegiatan[STATE.currentPK].splice(idx, 1);
+      renderButirList();
+    });
   });
 }
 
-function actionGetUserSuggestions() {
-  const sh = getSheet(SHEET_USERS);
-  const users = sheetToObjects(sh);
-  const list = users.map(u => ({ username: u.username, nama: u.nama || "" }));
-  return { success: true, data: list };
+function autoGrow(ta) {
+  ta.style.height = "auto";
+  ta.style.height = (ta.scrollHeight) + "px";
 }
 
-function actionGetSettings() {
-  const sh = getSheet(SHEET_SETTINGS);
-  const rows = sheetToObjects(sh);
-  const data = Object.assign({}, SETTINGS_DEFAULT);
-  rows.forEach(r => { data[r.key] = r.value; });
-  return { success: true, data };
+// Panel "Butir Kegiatan" disembunyikan secara default saat login; perawat
+// bisa tap heading-nya untuk menampilkan/menyembunyikan kapan saja.
+document.getElementById("butirHeading").addEventListener("click", () => {
+  const body = document.getElementById("butirCollapseBody");
+  const icon = document.getElementById("butirToggleIcon");
+  const isHidden = body.style.display === "none";
+  body.style.display = isHidden ? "block" : "none";
+  icon.textContent = isHidden ? "Sembunyikan ▴" : "Tampilkan ▾";
+});
+
+document.getElementById("btnAddButir").addEventListener("click", () => {
+  if (!STATE.butirKegiatan[STATE.currentPK]) STATE.butirKegiatan[STATE.currentPK] = [];
+  STATE.butirKegiatan[STATE.currentPK].push({ id: "", teks: "" });
+  renderButirList();
+  const textareas = document.querySelectorAll("#butirList textarea");
+  if (textareas.length) textareas[textareas.length - 1].focus();
+});
+
+document.getElementById("btnSaveButir").addEventListener("click", async () => {
+  const textareas = document.querySelectorAll("#butirList textarea");
+  const items = Array.from(textareas).map((ta, idx) => ({
+    id: STATE.butirKegiatan[STATE.currentPK][idx]?.id || "",
+    teks: ta.value.trim(),
+  })).filter(it => it.teks);
+
+  const btn = document.getElementById("btnSaveButir");
+  btn.disabled = true; btn.textContent = "Menyimpan...";
+  const res = await apiCall("saveButirKegiatan", { pk: STATE.currentPK, items });
+  btn.disabled = false; btn.textContent = "Simpan Perubahan";
+
+  if (res.success) {
+    showToast("Butir kegiatan berhasil disimpan.");
+    await loadButirKegiatan(STATE.currentPK);
+  } else {
+    showToast(res.message || "Gagal menyimpan.");
+  }
+});
+
+/* =========================================================
+   TAMBAH BANYAK BUTIR KEGIATAN (PASTE/TEMPEL DARI DOKUMEN LAIN)
+   Dipakai baik oleh panel Perawat maupun panel Admin (master PK).
+   ========================================================= */
+function openBulkButirModal(target) {
+  STATE.bulkButirTarget = target; // "perawat" | "admin"
+  document.getElementById("bulkButirTextarea").value = "";
+  document.getElementById("bulkButirModal").classList.add("show");
+  setTimeout(() => document.getElementById("bulkButirTextarea").focus(), 50);
 }
 
-function actionAdminSaveSettings(p) {
-  return lock(() => {
-    let incoming;
-    try { incoming = parseMaybeJson(p.settings); }
-    catch (e) { return { success: false, message: "Format pengaturan tidak valid." }; }
+function parseBulkButirText(raw) {
+  return raw
+    .split(/\r?\n/)
+    .map(line => line.replace(/^\s*([0-9]+[\.\)]|[-•*])\s*/, "").trim())
+    .filter(line => line.length > 0);
+}
 
-    const sh = getSheet(SHEET_SETTINGS);
-    const data = sh.getDataRange().getValues();
-    const keyToRow = {};
-    for (let i = 1; i < data.length; i++) keyToRow[data[i][0]] = i + 1;
+document.getElementById("btnBulkButir").addEventListener("click", () => openBulkButirModal("perawat"));
+document.getElementById("btnAdminBulkButir").addEventListener("click", () => openBulkButirModal("admin"));
+document.getElementById("btnCloseBulkButirModal").addEventListener("click", () => {
+  document.getElementById("bulkButirModal").classList.remove("show");
+});
 
-    Object.keys(incoming).forEach(key => {
-      if (keyToRow[key]) {
-        sh.getRange(keyToRow[key], 2).setValue(incoming[key]);
+document.getElementById("btnSubmitBulkButir").addEventListener("click", () => {
+  const raw = document.getElementById("bulkButirTextarea").value;
+  const lines = parseBulkButirText(raw);
+  if (!lines.length) { showToast("Tidak ada teks yang bisa ditambahkan."); return; }
+
+  if (STATE.bulkButirTarget === "admin") {
+    if (!STATE.adminButir[STATE.adminCurrentPK]) STATE.adminButir[STATE.adminCurrentPK] = [];
+    lines.forEach(teks => STATE.adminButir[STATE.adminCurrentPK].push({ id: "", teks }));
+    renderAdminButirList();
+  } else {
+    if (!STATE.butirKegiatan[STATE.currentPK]) STATE.butirKegiatan[STATE.currentPK] = [];
+    lines.forEach(teks => STATE.butirKegiatan[STATE.currentPK].push({ id: "", teks }));
+    renderButirList();
+  }
+
+  document.getElementById("bulkButirModal").classList.remove("show");
+  showToast(`${lines.length} butir kegiatan ditambahkan. Klik "Simpan Perubahan" untuk menyimpannya.`);
+});
+
+/* =========================================================
+   KALENDER
+   ========================================================= */
+document.getElementById("prevMonth").addEventListener("click", () => changeMonth(-1));
+document.getElementById("nextMonth").addEventListener("click", () => changeMonth(1));
+
+async function changeMonth(delta) {
+  STATE.calMonth += delta;
+  if (STATE.calMonth < 0) { STATE.calMonth = 11; STATE.calYear--; }
+  if (STATE.calMonth > 11) { STATE.calMonth = 0; STATE.calYear++; }
+  await renderCalendar();
+  await loadRiwayat();
+}
+
+function pad2(n) { return String(n).padStart(2, "0"); }
+function monthStr() { return `${STATE.calYear}-${pad2(STATE.calMonth + 1)}`; }
+
+async function renderCalendar() {
+  document.getElementById("monthLabel").textContent = `${BULAN_NAMA[STATE.calMonth]} ${STATE.calYear}`;
+  const cetakLabelEl = document.getElementById("cetakBulanLabel");
+  if (cetakLabelEl) cetakLabelEl.textContent = `${BULAN_NAMA[STATE.calMonth]} ${STATE.calYear}`;
+  const grid = document.getElementById("calGrid");
+  grid.innerHTML = "";
+  HARI_NAMA.forEach(h => {
+    const d = document.createElement("div");
+    d.className = "cal-dow";
+    d.textContent = h;
+    grid.appendChild(d);
+  });
+
+  const firstDay = new Date(STATE.calYear, STATE.calMonth, 1).getDay();
+  const totalDays = new Date(STATE.calYear, STATE.calMonth + 1, 0).getDate();
+  const todayStr = formatDateStr(new Date());
+
+  const res = await apiCall("getPengajuan", { username: STATE.user.username, bulan: monthStr() });
+  STATE.pengajuanBulanIni = res.data || [];
+
+  for (let i = 0; i < firstDay; i++) {
+    const empty = document.createElement("div");
+    empty.className = "cal-day empty";
+    grid.appendChild(empty);
+  }
+
+  for (let day = 1; day <= totalDays; day++) {
+    const dateStr = `${STATE.calYear}-${pad2(STATE.calMonth + 1)}-${pad2(day)}`;
+    const cell = document.createElement("div");
+    cell.className = "cal-day" + (dateStr === todayStr ? " today" : "");
+    const itemsForDay = STATE.pengajuanBulanIni.filter(p => p.tanggal === dateStr);
+
+    let dotsHtml = "";
+    itemsForDay.slice(0, 6).forEach(p => {
+      const cls = p.status === "diterima" ? "ok" : p.status === "ditolak" ? "rej" : "pending";
+      dotsHtml += `<span class="dot ${cls}"></span>`;
+    });
+
+    cell.innerHTML = `<div class="date-num">${day}</div><div class="dots">${dotsHtml}</div>`;
+    cell.addEventListener("click", () => openDayModal(dateStr));
+    grid.appendChild(cell);
+  }
+
+  renderRiwayatFromState();
+}
+
+function formatDateStr(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+/* =========================================================
+   MODAL HARIAN: lihat pengajuan existing + tambah baru
+   ========================================================= */
+function openDayModal(dateStr) {
+  STATE.selectedDateStr = dateStr;
+  const d = new Date(dateStr + "T00:00:00");
+  const label = `${d.getDate()} ${BULAN_NAMA[d.getMonth()]} ${d.getFullYear()}`;
+  document.getElementById("dayModalTitle").textContent = "Pengajuan Aktivitas";
+  document.getElementById("dayModalSub").textContent = `Tanggal: ${label} · Jenjang Karir: ${pkLabel(STATE.currentPK)}`;
+
+  const sel = document.getElementById("butirSelect");
+  sel.innerHTML = "";
+  (STATE.butirKegiatan[STATE.currentPK] || []).forEach(item => {
+    const opt = document.createElement("option");
+    opt.value = item.id || item.teks;
+    opt.textContent = item.teks;
+    opt.dataset.teks = item.teks;
+    sel.appendChild(opt);
+  });
+  document.getElementById("butirJumpInput").value = "";
+
+  document.getElementById("noRMInput").value = "";
+
+  const existingWrap = document.getElementById("dayExistingList");
+  const existing = STATE.pengajuanBulanIni.filter(p => p.tanggal === dateStr);
+  if (existing.length) {
+    existingWrap.innerHTML = "<div style='font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:8px;'>Pengajuan pada tanggal ini:</div>" +
+      existing.map(p => `
+        <div class="pengajuan-item ${p.status}">
+          <div class="row1">
+            <div class="butir-txt" style="margin:0;">${escapeHtml(p.butirTeks)}</div>
+            <span class="status-tag ${p.status}">${statusLabel(p.status)}</span>
+          </div>
+          <div class="meta">No. RM: ${escapeHtml(p.noRM)}</div>
+        </div>
+      `).join("");
+  } else {
+    existingWrap.innerHTML = "";
+  }
+
+  document.getElementById("dayModal").classList.add("show");
+}
+
+/* =========================================================
+   KOTAK LOMPAT CEPAT (jump-to-letter) UNTUK DROPDOWN BUTIR KEGIATAN
+   Daftar/dropdown tetap menampilkan semua butir seperti biasa;
+   kotak ini hanya "melompatkan" pilihan ke butir yang cocok
+   dengan huruf/kata yang sedang diketik, mirip ketik-cepat pada <select>.
+   ========================================================= */
+function jumpButirSelectTo(query) {
+  const sel = document.getElementById("butirSelect");
+  const q = query.trim().toLowerCase();
+  if (!q) return;
+  const options = Array.from(sel.options);
+  // utamakan butir yang teksnya DIAWALI kata kunci (mirip lompat-alfabet bawaan <select>)
+  let idx = options.findIndex(o => o.textContent.toLowerCase().startsWith(q));
+  // kalau tidak ada yang diawali, cari yang MEMUAT kata kunci di posisi manapun
+  if (idx === -1) idx = options.findIndex(o => o.textContent.toLowerCase().includes(q));
+  if (idx !== -1) sel.selectedIndex = idx;
+}
+
+document.getElementById("butirJumpInput").addEventListener("input", () => {
+  jumpButirSelectTo(document.getElementById("butirJumpInput").value);
+});
+
+document.getElementById("butirJumpInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    const sel = document.getElementById("butirSelect");
+    // buka dropdown-nya kalau browser mendukung (Chrome/Edge versi baru)
+    if (typeof sel.showPicker === "function") {
+      try { sel.showPicker(); } catch (err) { sel.focus(); }
+    } else {
+      sel.focus();
+    }
+  }
+});
+
+document.getElementById("btnCloseDayModal").addEventListener("click", () => {
+  document.getElementById("dayModal").classList.remove("show");
+});
+
+document.getElementById("btnSubmitPengajuan").addEventListener("click", async () => {
+  const sel = document.getElementById("butirSelect");
+  const noRM = document.getElementById("noRMInput").value.trim();
+  if (!sel.value) { showToast("Tidak ada butir kegiatan tersedia. Tambahkan dulu di atas."); return; }
+  if (!noRM) { showToast("Mohon isi No. Medrek (RM) pasien."); return; }
+
+  const selectedOpt = sel.options[sel.selectedIndex];
+  const btn = document.getElementById("btnSubmitPengajuan");
+  btn.disabled = true; btn.textContent = "Menyimpan...";
+
+  const res = await apiCall("addPengajuan", {
+    tanggal: STATE.selectedDateStr,
+    username: STATE.user.username,
+    nama: STATE.user.nama,
+    pk: STATE.currentPK,
+    butirId: selectedOpt.value,
+    butirTeks: selectedOpt.dataset.teks,
+    noRM,
+  });
+
+  btn.disabled = false; btn.textContent = "Ajukan Aktivitas";
+
+  if (res.success) {
+    showToast("Aktivitas berhasil diajukan, menunggu verifikasi.");
+    document.getElementById("dayModal").classList.remove("show");
+    await renderCalendar();
+  } else {
+    showToast(res.message || "Gagal mengajukan aktivitas.", true);
+  }
+});
+
+/* =========================================================
+   RIWAYAT PENGAJUAN (list di bawah kalender)
+   ========================================================= */
+async function loadRiwayat() {
+  const res = await apiCall("getPengajuan", { username: STATE.user.username, bulan: monthStr() });
+  STATE.pengajuanBulanIni = res.data || [];
+  renderRiwayatFromState();
+}
+
+function renderRiwayatFromState() {
+  const wrap = document.getElementById("riwayatList");
+  const items = [...STATE.pengajuanBulanIni].sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
+  if (!items.length) {
+    wrap.innerHTML = `<div class="empty-state">Belum ada pengajuan aktivitas pada bulan ini.</div>`;
+    return;
+  }
+  wrap.innerHTML = items.map(p => `
+    <div class="pengajuan-item ${p.status}">
+      <div class="row1">
+        <div class="tgl">${formatTglIndo(p.tanggal)}</div>
+        <span class="status-tag ${p.status}">${statusLabel(p.status)}</span>
+      </div>
+      <div class="butir-txt">${escapeHtml(p.butirTeks)}</div>
+      <div class="meta">No. RM: ${escapeHtml(p.noRM)} ${p.catatanVerifikator ? "· Catatan: " + escapeHtml(p.catatanVerifikator) : ""}</div>
+    </div>
+  `).join("");
+}
+
+function formatTglIndo(tglStr) {
+  const d = new Date(tglStr + "T00:00:00");
+  return `${d.getDate()} ${BULAN_NAMA[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+// Versi singkat "24/06" — dipakai di tabel rekap cetak kalau kolom tanggal
+// banyak (>6), supaya teks tidak terpotong di kolom yang sempit.
+function formatTglSingkat(tglStr) {
+  const d = new Date(tglStr + "T00:00:00");
+  return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+
+function statusLabel(s) {
+  if (s === "diterima") return "Diterima";
+  if (s === "ditolak") return "Ditolak";
+  return "Menunggu";
+}
+
+/* =========================================================
+   CETAK LAPORAN BULANAN LOGBOOK (status "diterima" dan "menunggu verifikasi";
+   "ditolak" tidak disertakan. Item yang masih menunggu ditandai merah pada
+   kolom tanggal & No. RM.)
+   ========================================================= */
+document.getElementById("btnCetakLaporan").addEventListener("click", () => {
+  document.getElementById("ttdPerawatModal").classList.add("show");
+  requestAnimationFrame(() => {
+    if (typeof window.resizeTtdPerawatCanvas === "function") window.resizeTtdPerawatCanvas();
+  });
+});
+
+async function cetakLaporanBulanan(ttdPerawatDataUrl) {
+  const dicetak = (STATE.pengajuanBulanIni || [])
+    .filter(p => p.status === "diterima" || p.status === "pending")
+    .sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+
+  // Verifikator utama & tanda tangan tetap dihitung dari yang SUDAH diterima saja,
+  // karena yang masih menunggu belum punya verifikatorOleh.
+  const diterima = dicetak.filter(p => p.status === "diterima");
+
+  if (!dicetak.length) {
+    showToast("Belum ada aktivitas pada bulan ini untuk dicetak.");
+    return;
+  }
+
+  const u = STATE.user;
+  const s = STATE.settings || {};
+  const bulanLabel = `${BULAN_NAMA[STATE.calMonth]} ${STATE.calYear}`;
+
+  // Rekap: kelompokkan berdasarkan butir kegiatan (urutan kemunculan pertama dipertahankan)
+  const rekapMap = new Map();
+  dicetak.forEach(p => {
+    const key = p.butirTeks || "";
+    if (!rekapMap.has(key)) {
+      rekapMap.set(key, { butirTeks: p.butirTeks, kemunculan: [], verifikatorSet: new Set() });
+    }
+    const grup = rekapMap.get(key);
+    grup.kemunculan.push({ tanggal: p.tanggal, noRM: p.noRM || "-", status: p.status });
+    if (p.status === "diterima" && p.verifikatorOleh) grup.verifikatorSet.add(p.verifikatorOleh);
+  });
+  const rekapList = Array.from(rekapMap.values());
+
+  // Jumlah kolom tanggal menyesuaikan otomatis ke jumlah kemunculan TERBANYAK
+  // di antara semua butir kegiatan bulan ini, minimum 5 kolom (supaya tampilan
+  // tetap rapi untuk kasus normal yang jarang/tidak pernah lebih dari 5).
+  const MAX_KOLOM_TGL = Math.max(5, ...rekapList.map(g => g.kemunculan.length));
+
+  const selKosong = `<td style="background:#666;border:1px solid #000;"></td>`;
+  const WARNA_MENUNGGU = "#c0392b";
+
+  const rowsHtml = rekapList.map((grup, idx) => {
+    const kolomTgl = [];
+    const pakaiFormatSingkat = MAX_KOLOM_TGL > 6;
+    for (let i = 0; i < MAX_KOLOM_TGL; i++) {
+      const item = grup.kemunculan[i];
+      if (item) {
+        const isMenunggu = item.status === "pending";
+        const warnaStyle = isMenunggu ? `color:${WARNA_MENUNGGU};` : "";
+        const tglText = pakaiFormatSingkat ? formatTglSingkat(item.tanggal) : formatTglIndo(item.tanggal);
+        kolomTgl.push(`
+          <td style="text-align:center;white-space:nowrap;${warnaStyle}">
+            ${tglText}<br/>
+            <span style="font-size:${pakaiFormatSingkat ? "9px" : "10px"};${isMenunggu ? warnaStyle : "color:#333;"}">RM ${escapeHtml(item.noRM)}</span>
+          </td>
+        `);
       } else {
-        sh.appendRow([key, incoming[key]]);
+        kolomTgl.push(selKosong);
       }
-    });
-    return { success: true, message: "Pengaturan berhasil disimpan." };
-  });
-}
-
-function actionGetButirKegiatan(p) {
-  const pk = p.pk;
-  const sh = getSheet(SHEET_BUTIR);
-  const rows = sheetToObjects(sh).filter(r => r.pk === pk);
-  return { success: true, data: rows.map(r => ({ id: r.id, teks: r.teks })) };
-}
-
-function actionSaveButirKegiatan(p) {
-  return saveButirForPK(p.pk, parseMaybeJson(p.items),
-    "Butir kegiatan berhasil disimpan.");
-}
-
-function actionAdminGetAllButir() {
-  const sh = getSheet(SHEET_BUTIR);
-  const rows = sheetToObjects(sh);
-  const grouped = { PK1: [], PK2: [], PK3: [], PK4: [] };
-  PK_LIST.forEach(pk => {
-    grouped[pk] = rows.filter(r => r.pk === pk).map(r => ({ id: r.id, teks: r.teks }));
-  });
-  return { success: true, data: grouped };
-}
-
-function actionAdminSaveButirForPK(p) {
-  return saveButirForPK(p.pk, parseMaybeJson(p.items),
-    "Butir kegiatan " + p.pk + " berhasil disimpan.");
-}
-
-function saveButirForPK(pk, items, successMessage) {
-  return lock(() => {
-    const sh = getSheet(SHEET_BUTIR);
-    const data = sh.getDataRange().getValues();
-
-    for (let i = data.length - 1; i >= 1; i--) {
-      if (data[i][1] === pk) sh.deleteRow(i + 1);
     }
+    const verifNama = Array.from(grup.verifikatorSet).join(", ") || "-";
+    return `
+      <tr>
+        <td style="text-align:center;">${idx + 1}</td>
+        <td>${escapeHtml(grup.butirTeks)}</td>
+        ${kolomTgl.join("")}
+        <td style="text-align:center;">${escapeHtml(verifNama)}</td>
+      </tr>
+    `;
+  }).join("");
 
-    items.forEach((it, i) => {
-      const id = it.id || (pk + "-" + String(i + 1).padStart(2, "0"));
-      sh.appendRow([id, pk, it.teks, true]);
-    });
+  const kotaTtd = (s.kopKota || "").replace(/\s*\d{4,6}\s*$/, "").trim() || "Bandung";
 
-    return { success: true, message: successMessage };
+  // Tentukan verifikator utama untuk kolom tanda tangan (paling sering muncul; jika seri, ambil yang terakhir)
+  // Hanya dihitung dari aktivitas yang SUDAH Diterima.
+  const freqVerifikator = new Map();
+  diterima.forEach(p => {
+    if (!p.verifikatorOleh) return;
+    freqVerifikator.set(p.verifikatorOleh, (freqVerifikator.get(p.verifikatorOleh) || 0) + 1);
   });
-}
+  let verifikatorUtama = diterima.length ? (diterima[diterima.length - 1].verifikatorOleh || "") : "";
+  let maxFreq = 0;
+  freqVerifikator.forEach((freq, nama) => {
+    if (freq >= maxFreq) { maxFreq = freq; verifikatorUtama = nama; }
+  });
 
-function actionGetPengajuan(p) {
-  const username = String(p.username || "").toLowerCase();
-  const bulan = p.bulan;
-  const sh = getSheet(SHEET_PENGAJUAN);
-  let rows = sheetToObjects(sh);
-  rows = rows.filter(r =>
-    String(r.username).toLowerCase() === username &&
-    (!bulan || formatDateForFrontend(r.tanggal).startsWith(bulan))
-  );
-  return { success: true, data: rows.map(normalizePengajuanRow) };
-}
-
-function actionGetAllPengajuanForVerifikator(p) {
-  const bulan = p.bulan;
-  const sh = getSheet(SHEET_PENGAJUAN);
-  let rows = sheetToObjects(sh);
-  if (bulan) rows = rows.filter(r => formatDateForFrontend(r.tanggal).startsWith(bulan));
-  rows = rows.map(normalizePengajuanRow);
-  rows.sort((a, b) => new Date(b.waktuInput) - new Date(a.waktuInput));
-  return { success: true, data: rows };
-}
-
-function normalizePengajuanRow(r) {
-  return {
-    id: r.id,
-    tanggal: formatDateForFrontend(r.tanggal),
-    username: r.username,
-    nama: r.nama,
-    pk: r.pk,
-    butirId: r.butirId,
-    butirTeks: r.butirTeks,
-    noRM: r.noRM,
-    status: r.status,
-    catatanVerifikator: r.catatanVerifikator || "",
-    verifikatorOleh: r.verifikatorOleh || "",
-    waktuInput: r.waktuInput,
-    waktuVerifikasi: r.waktuVerifikasi || "",
-  };
-}
-
-function formatDateForFrontend(value) {
-  if (value instanceof Date) {
-    const y = value.getFullYear();
-    const m = String(value.getMonth() + 1).padStart(2, "0");
-    const d = String(value.getDate()).padStart(2, "0");
-    return y + "-" + m + "-" + d;
+  // Ambil tanda tangan verifikator utama dari SERVER (bukan dari STATE milik
+  // user yang sedang login), supaya benar walau yang mencetak adalah perawat
+  // dari HP yang berbeda dengan HP verifikator.
+  let signatureUntukCetak = "";
+  if (verifikatorUtama) {
+    try {
+      const sigRes = await apiCall("getSignatureByName", { nama: verifikatorUtama });
+      if (sigRes.success && sigRes.data && sigRes.data.signature) {
+        signatureUntukCetak = sigRes.data.signature;
+      }
+    } catch (e) {
+      console.error("Gagal mengambil tanda tangan verifikator:", e);
+    }
   }
-  return String(value);
-}
 
-function actionAddPengajuan(p) {
-  return lock(() => {
-    const sh = getSheet(SHEET_PENGAJUAN);
-    const id = "PJN-" + new Date().getTime() + "-" + Math.floor(Math.random() * 1000);
-    sh.appendRow([
-      id,
-      p.tanggal,
-      String(p.username || "").toLowerCase(),
-      p.nama,
-      p.pk,
-      p.butirId,
-      p.butirTeks,
-      p.noRM || "",
-      "pending",
-      "",
-      "",
-      nowIso(),
-      "",
-    ]);
-    return { success: true, message: "Pengajuan tersimpan.", id };
-  });
-}
+  // Ambil nama & tanda tangan Kepala Ruangan (akun tunggal untuk seluruh unit).
+  // Kalau belum ada akun Kepala Ruangan yang dibuat, baris TTD ketiga ini
+  // tetap dicetak tapi kosong (nama & tanda tangan kosong), tidak error.
+  let karuNama = "";
+  let karuSignature = "";
+  try {
+    const karuRes = await apiCall("getKepalaRuangan", {});
+    if (karuRes.success && karuRes.data) {
+      karuNama = karuRes.data.nama || "";
+      karuSignature = karuRes.data.signature || "";
+    }
+  } catch (e) {
+    console.error("Gagal mengambil data Kepala Ruangan:", e);
+  }
 
-function actionUpdateStatusPengajuan(p) {
-  return lock(() => {
-    const sh = getSheet(SHEET_PENGAJUAN);
-    const rowIdx = findRowIndexByValue(sh, 1, p.id);
-    if (rowIdx === -1) return { success: false, message: "Tidak ditemukan." };
+  const docHtml = `<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<title>Laporan Logbook — ${escapeHtml(bulanLabel)}</title>
+<style>
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:24px 28px; background:#fff; color:#000;
+    font-family:'Times New Roman', Times, serif;
+  }
+  .print-kop{
+    display:flex; align-items:center; gap:16px;
+    border-bottom:3px double #000; padding-bottom:10px; margin-bottom:4px;
+  }
+  .print-kop img{ width:78px; height:auto; flex-shrink:0; }
+  .print-kop .kop-text{ flex:1; text-align:center; }
+  .print-kop .instansi1{ font-size:13.5px; font-weight:700; letter-spacing:.3px; margin:0; }
+  .print-kop .instansi2{ font-size:13.5px; font-weight:700; letter-spacing:.3px; margin:1px 0 4px; }
+  .print-kop .rs-nama{ font-size:19px; font-weight:800; letter-spacing:.4px; margin:0 0 4px; text-transform:uppercase; }
+  .print-kop .rs-alamat{ font-size:10.5px; margin:1px 0; }
+  .print-kop .rs-kota{ font-size:12.5px; font-weight:700; margin:4px 0 0; }
+  .print-title{ text-align:center; font-weight:700; font-size:14px; text-decoration:underline; margin:20px 0 16px; text-transform:uppercase; }
+  .print-identity{ font-size:12.5px; margin-bottom:16px; }
+  .print-identity table{ border-collapse:collapse; }
+  .print-identity td{ padding:1px 6px; vertical-align:top; }
+  table.print-table{ width:100%; border-collapse:collapse; font-size:10px; margin-bottom:24px; }
+  table.print-table th, table.print-table td{ border:1px solid #000; padding:4px 5px; text-align:left; line-height:1.35; }
+  table.print-table th{ background:#eee; text-align:center; font-size:10px; }
+  .print-sign-row{ display:flex; justify-content:space-between; margin-top:36px; font-size:12px; }
+  .print-sign-row-center{ display:flex; justify-content:center; margin-top:28px; font-size:12px; }
+  .print-sign-col{ text-align:center; width:280px; }
+  .print-sign-col .sign-space{ height:75px; display:flex; align-items:center; justify-content:center; }
+  .print-sign-col .sign-space img{ width:200px; height:75px; display:block; margin:0 auto; object-fit:fill; }
+  .toolbar{
+    display:flex; gap:10px; justify-content:center; padding:14px;
+    background:#f1f1f1; position:sticky; top:0; margin:-24px -28px 24px;
+  }
+  .toolbar button{
+    border:none; border-radius:8px; padding:10px 18px; font-size:14px; font-weight:600;
+    cursor:pointer; font-family:'Segoe UI',Tahoma,sans-serif;
+  }
+  .toolbar .btn-print{ background:#0f3460; color:#fff; }
+  .toolbar .btn-close{ background:#fff; border:1.5px solid #ccc; color:#444; }
+  @media print{
+    .toolbar{ display:none !important; }
+    body{ padding:0; }
+    /* Paksa browser cetak background color (sel abu gelap) */
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+    @page { size: ${MAX_KOLOM_TGL > 6 ? "A4 landscape" : "A4 portrait"}; margin: 12mm; }
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <button class="btn-print" onclick="window.print()">🖨️ Cetak / Simpan PDF</button>
+    <button class="btn-close" onclick="window.close()">Tutup</button>
+  </div>
 
-    const headers = sh.getDataRange().getValues()[0];
-    setCol(sh, rowIdx, headers, "status", p.status);
-    setCol(sh, rowIdx, headers, "catatanVerifikator", p.catatan || "");
-    setCol(sh, rowIdx, headers, "verifikatorOleh", p.verifikatorOleh || "");
-    setCol(sh, rowIdx, headers, "waktuVerifikasi", nowIso());
+  <div class="print-kop">
+    <img src="${LOGO_JABAR_B64}" alt="Logo" />
+    <div class="kop-text">
+      <p class="instansi1">${escapeHtml(s.kopInstansi1 || "PEMERINTAH DAERAH PROVINSI JAWA BARAT")}</p>
+      <p class="instansi2">${escapeHtml(s.kopInstansi2 || "DINAS KESEHATAN")}</p>
+      <p class="rs-nama">${escapeHtml(s.kopNamaRS || "UOBK RUMAH SAKIT UMUM DAERAH WELAS ASIH")}</p>
+      <p class="rs-alamat">${escapeHtml(s.kopAlamat || "")}</p>
+      <p class="rs-alamat">${escapeHtml(s.kopKontak || "")}</p>
+      <p class="rs-kota">${escapeHtml(s.kopKota || "BANDUNG 40375")}</p>
+    </div>
+  </div>
 
-    return { success: true, message: "Status diperbarui." };
-  });
-}
+  <div class="print-title">Logbook Kegiatan ${escapeHtml(pkLabel(STATE.currentPK))} — Bulan ${escapeHtml(bulanLabel)}</div>
 
-function actionBulkUpdateStatus(p) {
-  return lock(() => {
-    const ids = parseMaybeJson(p.ids);
-    const sh = getSheet(SHEET_PENGAJUAN);
-    const headers = sh.getDataRange().getValues()[0];
-    let count = 0;
+  <div class="print-identity">
+    <table>
+      <tr><td style="width:140px;">Nama Perawat</td><td>: <strong>${escapeHtml(u.nama || u.username)}</strong></td></tr>
+      <tr><td>NIP</td><td>: ${escapeHtml(u.nip || "-")}</td></tr>
+      <tr><td>Jenjang Karir</td><td>: ${escapeHtml(pkLabel(STATE.currentPK))}</td></tr>
+      <tr><td>Unit Kerja</td><td>: ${escapeHtml(s.kopUnit || "Instalasi Hemodialisa")}, ${escapeHtml(s.kopNamaRS || "RSUD Welas Asih")}</td></tr>
+      <tr><td>Periode</td><td>: ${escapeHtml(bulanLabel)}</td></tr>
+    </table>
+  </div>
 
-    ids.forEach(id => {
-      const rowIdx = findRowIndexByValue(sh, 1, id);
-      if (rowIdx !== -1) {
-        setCol(sh, rowIdx, headers, "status", p.status);
-        setCol(sh, rowIdx, headers, "verifikatorOleh", p.verifikatorOleh || "");
-        setCol(sh, rowIdx, headers, "waktuVerifikasi", nowIso());
-        count++;
+  <table class="print-table">
+    <thead>
+      <tr>
+        <th style="width:24px;" rowspan="2">No</th>
+        <th rowspan="2">Butir Kegiatan</th>
+        <th colspan="${MAX_KOLOM_TGL}">Waktu Kegiatan dan No. Rekam Medis</th>
+        <th style="width:11%;" rowspan="2">Diverifikasi Oleh</th>
+      </tr>
+      <tr>
+        ${(() => {
+          // Lebar kolom tanggal menyusut otomatis kalau jumlahnya banyak,
+          // supaya total tabel tetap pas 100% lebar halaman (tidak terpotong).
+          const lebarTglPersen = Math.min(13, Math.floor(55 / MAX_KOLOM_TGL));
+          return Array.from({ length: MAX_KOLOM_TGL }, (_, i) =>
+            `<th style="width:${lebarTglPersen}%;font-size:9px;">${i + 1}</th>`
+          ).join("");
+        })()}
+      </tr>
+    </thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>
+
+  ${dicetak.some(p => p.status === "pending") ? `
+  <div style="font-size:11px;margin-top:8px;color:${WARNA_MENUNGGU};">
+    * Tanggal &amp; No. RM berwarna merah menandakan aktivitas masih menunggu verifikasi.
+  </div>` : ""}
+  ${MAX_KOLOM_TGL > 6 ? `
+  <div style="font-size:11px;margin-top:4px;color:#555;">
+    * Format tanggal disingkat menjadi tgl/bulan (contoh 24/06) karena jumlah kolom yang banyak.
+  </div>` : ""}
+
+  <div class="print-sign-row">
+    <div class="print-sign-col">
+      <div>Mengetahui,<br/>Verifikator</div>
+      ${signatureUntukCetak
+        ? `<div class="sign-space"><img src="${signatureUntukCetak}" alt="ttd"/></div>`
+        : `<div class="sign-space"></div>`
       }
+      <div>( ${escapeHtml(verifikatorUtama || "............................")} )</div>
+    </div>
+    <div class="print-sign-col">
+      <div>${escapeHtml(kotaTtd)}, ${formatTglIndo(formatDateStr(new Date()))}<br/>Perawat yang bersangkutan</div>
+      ${ttdPerawatDataUrl
+        ? `<div class="sign-space"><img src="${ttdPerawatDataUrl}" alt="ttd"/></div>`
+        : `<div class="sign-space"></div>`
+      }
+      <div>( ${escapeHtml(u.nama || u.username)} )</div>
+    </div>
+  </div>
+
+  <div class="print-sign-row-center">
+    <div class="print-sign-col">
+      <div>Mengetahui,<br/>Kepala Ruangan Instalasi Hemodialisa</div>
+      ${karuSignature
+        ? `<div class="sign-space"><img src="${karuSignature}" alt="ttd"/></div>`
+        : `<div class="sign-space"></div>`
+      }
+      <div>( ${escapeHtml(karuNama || "............................")} )</div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const printWin = window.open("", "_blank");
+  if (!printWin) {
+    showToast("Browser memblokir pop-up. Mohon izinkan pop-up untuk halaman ini, lalu coba lagi.");
+    return;
+  }
+  printWin.document.open();
+  printWin.document.write(docHtml);
+  printWin.document.close();
+}
+
+// Helper bersama: gambar file gambar yang diupload (foto/scan TTD) ke dalam
+// canvas signature, supaya hasilnya tetap konsisten (PNG dari canvas yang sama
+// dengan hasil gambar manual). "Contain" agar gambar tidak gepeng/terpotong.
+function drawUploadedImageToCanvas(file, canvas, ctx, onDone) {
+  if (!file) return;
+  if (!file.type || !file.type.startsWith("image/")) {
+    showToast("File harus berupa gambar (JPG/PNG).", true);
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const cw = canvas.width / dpr;
+      const ch = canvas.height / dpr;
+      ctx.save();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, cw, ch);
+      // Hitung skala "contain" supaya gambar pas tanpa gepeng
+      const scale = Math.min(cw / img.width, ch / img.height);
+      const drawW = img.width * scale;
+      const drawH = img.height * scale;
+      const dx = (cw - drawW) / 2;
+      const dy = (ch - drawH) / 2;
+      ctx.drawImage(img, dx, dy, drawW, drawH);
+      ctx.restore();
+      if (typeof onDone === "function") onDone();
+    };
+    img.onerror = () => showToast("Gagal membaca gambar. Coba file lain.", true);
+    img.src = e.target.result;
+  };
+  reader.onerror = () => showToast("Gagal membaca file. Coba lagi.", true);
+  reader.readAsDataURL(file);
+}
+
+// Helper bersama: export canvas signature ke data URL yang ukurannya AMAN
+// untuk dikirim ke server.
+// Dua sumber masalah ukuran besar yang diatasi di sini:
+// 1. Di HP dengan layar resolusi tinggi (devicePixelRatio 2-3x), canvas
+//    signature jadi besar secara piksel.
+// 2. PNG bersifat lossless — untuk hasil UPLOAD FOTO (banyak gradasi warna,
+//    bayangan, tekstur kertas dari hasil kamera), ukurannya tetap besar
+//    walau resolusi sudah dikecilkan, karena PNG tidak memotong detail warna.
+// Solusi: resize ke lebar wajar (max ~700px) DAN export sebagai JPEG kualitas
+// 0.85 (bukan PNG) — JPEG sangat efisien untuk foto, dan untuk keperluan
+// tanda tangan (cukup jelas terlihat, tidak perlu piksel sempurna) ini aman.
+function exportSignatureDataUrl(sourceCanvas) {
+  const MAX_W = 700;
+  const dpr = window.devicePixelRatio || 1;
+  const realW = sourceCanvas.width;
+  const realH = sourceCanvas.height;
+  const cssW = realW / dpr;
+  const cssH = realH / dpr;
+
+  const scale = cssW > MAX_W ? (MAX_W / cssW) : 1;
+  const outW = Math.round(cssW * scale);
+  const outH = Math.round(cssH * scale);
+
+  const temp = document.createElement("canvas");
+  temp.width = outW;
+  temp.height = outH;
+  const tctx = temp.getContext("2d");
+  // Latar putih solid dulu (JPEG tidak mendukung transparan; juga membantu
+  // kompresi karena area putih solid sangat ringan di JPEG).
+  tctx.fillStyle = "#ffffff";
+  tctx.fillRect(0, 0, outW, outH);
+  tctx.drawImage(sourceCanvas, 0, 0, outW, outH);
+  return temp.toDataURL("image/jpeg", 0.85);
+}
+
+// Cek ukuran data URL (perkiraan KB). Dipakai untuk memberi peringatan dini
+// sebelum kirim ke server, supaya tidak menunggu "Failed to fetch" baru tahu.
+function estimateDataUrlSizeKB(dataUrl) {
+  // Base64 menambah ~33% dari ukuran asli; hitung dari panjang string setelah koma.
+  const base64 = dataUrl.split(",")[1] || "";
+  return Math.round((base64.length * 0.75) / 1024);
+}
+
+/* =========================================================
+   SIGNATURE PAD PERAWAT — modal opsional sebelum cetak laporan.
+   TIDAK disimpan ke server, hanya dipakai sekali untuk laporan
+   yang sedang dicetak saat itu.
+   ========================================================= */
+(function initSignaturePadPerawatCetak() {
+  const canvas = document.getElementById("ttdPerawatCanvas");
+  const ctx = canvas.getContext("2d");
+  let drawing = false;
+  let lastX = 0, lastY = 0;
+
+  function resizeCanvas() {
+    const wrap = document.getElementById("ttdPerawatPadWrap");
+    const dpr = window.devicePixelRatio || 1;
+    const w = wrap.offsetWidth || wrap.parentElement.offsetWidth || 300;
+    const h = 160;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2.2;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+  }
+  resizeCanvas();
+  window.addEventListener("resize", resizeCanvas);
+  window.resizeTtdPerawatCanvas = resizeCanvas;
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+  }
+
+  canvas.addEventListener("mousedown", e => { drawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; });
+  canvas.addEventListener("mousemove", e => {
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke();
+    lastX = p.x; lastY = p.y;
+  });
+  canvas.addEventListener("mouseup", () => { drawing = false; });
+  canvas.addEventListener("mouseleave", () => { drawing = false; });
+
+  canvas.addEventListener("touchstart", e => { e.preventDefault(); drawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; }, { passive: false });
+  canvas.addEventListener("touchmove", e => {
+    e.preventDefault();
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke();
+    lastX = p.x; lastY = p.y;
+  }, { passive: false });
+  canvas.addEventListener("touchend", () => { drawing = false; });
+
+  function clearCanvas() {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+  }
+
+  document.getElementById("btnClearTtdPerawat").addEventListener("click", clearCanvas);
+
+  document.getElementById("btnUploadTtdPerawat").addEventListener("click", () => {
+    document.getElementById("fileUploadTtdPerawat").click();
+  });
+  document.getElementById("fileUploadTtdPerawat").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    drawUploadedImageToCanvas(file, canvas, ctx);
+    e.target.value = "";
+  });
+
+  function closeModal() {
+    document.getElementById("ttdPerawatModal").classList.remove("show");
+  }
+
+  document.getElementById("btnLewatiTtdPerawat").addEventListener("click", () => {
+    closeModal();
+    cetakLaporanBulanan(null);
+    clearCanvas(); // bersihkan untuk pemakaian berikutnya
+  });
+
+  document.getElementById("btnPakaiTtdPerawat").addEventListener("click", () => {
+    const fullDataUrl = canvas.toDataURL("image/png");
+    const blank = document.createElement("canvas");
+    blank.width = canvas.width; blank.height = canvas.height;
+    const isBlank = fullDataUrl === blank.toDataURL("image/png");
+
+    closeModal();
+    cetakLaporanBulanan(isBlank ? null : exportSignatureDataUrl(canvas));
+    clearCanvas(); // bersihkan untuk pemakaian berikutnya
+  });
+})();
+
+/* =========================================================
+   SIGNATURE PAD VERIFIKATOR
+   ========================================================= */
+(function initSignaturePad() {
+  const canvas = document.getElementById("signatureCanvas");
+  const ctx = canvas.getContext("2d");
+  let drawing = false;
+  let lastX = 0, lastY = 0;
+
+  function resizeCanvas() {
+    const wrap = document.getElementById("signaturePadWrap");
+    const dpr = window.devicePixelRatio || 1;
+    const w = wrap.offsetWidth || wrap.parentElement.offsetWidth || 300;
+    const h = 180;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    // Gunakan setTransform (bukan scale) agar tidak menumpuk saat dipanggil berulang kali
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2.2;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+  }
+  resizeCanvas();
+  window.addEventListener("resize", resizeCanvas);
+  // Expose agar bisa dipanggil saat panel verifikator pertama kali dibuka
+  window.resizeSignatureCanvas = resizeCanvas;
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+  }
+
+  canvas.addEventListener("mousedown", e => { drawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; });
+  canvas.addEventListener("mousemove", e => {
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke();
+    lastX = p.x; lastY = p.y;
+  });
+  canvas.addEventListener("mouseup", () => { drawing = false; });
+  canvas.addEventListener("mouseleave", () => { drawing = false; });
+
+  canvas.addEventListener("touchstart", e => { e.preventDefault(); drawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; }, { passive: false });
+  canvas.addEventListener("touchmove", e => {
+    e.preventDefault();
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke();
+    lastX = p.x; lastY = p.y;
+  }, { passive: false });
+  canvas.addEventListener("touchend", () => { drawing = false; });
+
+  document.getElementById("btnClearSignature").addEventListener("click", () => {
+    // Reset transform sementara ke identity agar clearRect membersihkan seluruh canvas pixel
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+  });
+
+  document.getElementById("btnUploadSignature").addEventListener("click", () => {
+    document.getElementById("fileUploadSignature").click();
+  });
+  document.getElementById("fileUploadSignature").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    drawUploadedImageToCanvas(file, canvas, ctx, () => {
+      showToast("Gambar tanda tangan berhasil dimuat. Klik 'Simpan Tanda Tangan' untuk menyimpan.");
+    });
+    e.target.value = ""; // reset agar bisa pilih file yang sama lagi kalau perlu
+  });
+
+  document.getElementById("btnSaveSignature").addEventListener("click", async () => {
+    const checkUrl = canvas.toDataURL("image/png");
+    // Cek apakah canvas masih kosong
+    const blank = document.createElement("canvas");
+    blank.width = canvas.width; blank.height = canvas.height;
+    if (checkUrl === blank.toDataURL("image/png")) {
+      showToast("Tanda tangan masih kosong, silakan bubuhkan dulu.");
+      return;
+    }
+    // Kompres ke ukuran yang aman dikirim (canvas resolusi tinggi di HP
+    // bisa membengkak ukurannya dan gagal terkirim / "Failed to fetch").
+    const dataUrl = exportSignatureDataUrl(canvas);
+    const ukuranKB = estimateDataUrlSizeKB(dataUrl);
+    if (ukuranKB > 800) {
+      showToast("Gambar tanda tangan masih terlalu besar (" + ukuranKB + " KB). Coba unggah foto dengan resolusi lebih rendah, atau gambar manual di kanvas.", true);
+      return;
+    }
+    const btn = document.getElementById("btnSaveSignature");
+    btn.disabled = true; btn.textContent = "Menyimpan...";
+
+    const res = await apiCall("saveVerifikatorSignature", {
+      username: STATE.user.username,
+      signature: dataUrl,
     });
 
-    return { success: true, message: count + " pengajuan diperbarui." };
-  });
-}
+    btn.disabled = false; btn.textContent = "💾 Simpan Tanda Tangan";
 
-function setCol(sheet, rowIdx, headers, colName, value) {
-  const colIdx = headers.indexOf(colName) + 1;
-  if (colIdx > 0) sheet.getRange(rowIdx, colIdx).setValue(value);
-}
-
-function actionAdminGetUsers() {
-  const sh = getSheet(SHEET_USERS);
-  const rows = sheetToObjects(sh);
-  const list = rows.map(u => ({
-    username: u.username,
-    nama: u.nama,
-    pk: String(u.pk || "").toUpperCase(),
-    role: u.role,
-    nip: u.nip || "",
-  }));
-  return { success: true, data: list };
-}
-
-function actionAdminSaveUser(p) {
-  return lock(() => {
-    const username = String(p.username || "").trim().toLowerCase();
-    if (!username) return { success: false, message: "Username tidak boleh kosong." };
-    if (!p.role) return { success: false, message: "Role tidak boleh kosong." };
-
-    const sh = getSheet(SHEET_USERS);
-    const headers = sh.getDataRange().getValues()[0];
-    const rowIdx = findRowIndexByValue(sh, 1, username);
-
-    if (rowIdx !== -1) {
-      setCol(sh, rowIdx, headers, "nama", p.nama || "");
-      setCol(sh, rowIdx, headers, "nip", p.nip !== undefined ? String(p.nip) : "");
-      setCol(sh, rowIdx, headers, "pk", String(p.pk || "").toUpperCase());
-      setCol(sh, rowIdx, headers, "role", p.role);
-      if (p.password) setCol(sh, rowIdx, headers, "password", p.password);
-      return { success: true, message: "Akun '" + username + "' berhasil diperbarui." };
+    if (res.success) {
+      STATE.verifikatorSignature = dataUrl;
+      renderSignatureStatus(dataUrl);
+      showToast("Tanda tangan berhasil disimpan ke server. Akan tercetak di semua HP.");
+    } else {
+      showToast(res.message || "Gagal menyimpan tanda tangan ke server.", true);
     }
-
-    if (!p.password) return { success: false, message: "Password wajib diisi untuk akun baru." };
-    sh.appendRow([
-      username, p.password, p.nama || "", p.nip || "", String(p.pk || "").toUpperCase(), p.role, "",
-    ]);
-    return { success: true, message: "Akun '" + username + "' berhasil ditambahkan." };
   });
-}
 
-function actionAdminDeleteUser(p) {
-  return lock(() => {
-    const username = String(p.username || "").trim().toLowerCase();
-    const sh = getSheet(SHEET_USERS);
-    const rowIdx = findRowIndexByValue(sh, 1, username);
-    if (rowIdx === -1) return { success: false, message: "Akun tidak ditemukan." };
-    sh.deleteRow(rowIdx);
-    return { success: true, message: "Akun '" + username + "' berhasil dihapus." };
-  });
-}
-
-/* =========================================================================
-   TANDA TANGAN VERIFIKATOR — disimpan ke Sheets (tab Users, kolom signature)
-   supaya tersambung di semua HP, bukan cuma localStorage 1 perangkat.
-   ========================================================================= */
-function actionSaveVerifikatorSignature(p) {
-  return lock(() => {
-    const username = String(p.username || "").trim().toLowerCase();
-    if (!username) return { success: false, message: "Username tidak boleh kosong." };
-    if (!p.signature) return { success: false, message: "Data tanda tangan kosong." };
-    // Pengaman tambahan: sel Google Sheets punya batas ~50.000 karakter.
-    // Beri pesan jelas kalau data terlalu besar, bukan gagal diam-diam.
-    if (p.signature.length > 45000) {
-      return { success: false, message: "Data tanda tangan terlalu besar untuk disimpan. Coba gunakan gambar tanda tangan yang lebih sederhana atau resolusi lebih rendah." };
+  // Load signature tersimpan dari SERVER setelah login (dipanggil di initVerifPanel)
+  window.loadSavedSignature = async function() {
+    try {
+      const res = await apiCall("getVerifikatorSignature", { username: STATE.user.username || "" });
+      if (res.success && res.data && res.data.signature) {
+        STATE.verifikatorSignature = res.data.signature;
+        renderSignatureStatus(res.data.signature);
+      }
+    } catch (e) {
+      console.error("Gagal memuat tanda tangan:", e);
     }
+  };
 
-    const sh = getSheet(SHEET_USERS);
-    const headers = sh.getDataRange().getValues()[0];
-    let sigCol = headers.indexOf("signature") + 1;
-    if (sigCol === 0) {
-      sh.getRange(1, headers.length + 1).setValue("signature");
-      sigCol = headers.length + 1;
+  function renderSignatureStatus(dataUrl) {
+    const el = document.getElementById("signatureStatus");
+    el.style.display = "block";
+    el.innerHTML = `<div class="sign-saved-badge">✅ Tanda tangan sudah tersimpan</div>
+      <img src="${dataUrl}" class="sign-preview" alt="Preview tanda tangan" />`;
+  }
+})();
+
+/* =========================================================
+   SIGNATURE PAD KEPALA RUANGAN (pola sama dengan Verifikator,
+   memakai action backend yang sama karena sudah generik per-username)
+   ========================================================= */
+(function initSignaturePadKaru() {
+  const canvas = document.getElementById("signatureCanvasKaru");
+  const ctx = canvas.getContext("2d");
+  let drawing = false;
+  let lastX = 0, lastY = 0;
+
+  function resizeCanvas() {
+    const wrap = document.getElementById("signaturePadWrapKaru");
+    const dpr = window.devicePixelRatio || 1;
+    const w = wrap.offsetWidth || wrap.parentElement.offsetWidth || 300;
+    const h = 180;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2.2;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+  }
+  resizeCanvas();
+  window.addEventListener("resize", resizeCanvas);
+  window.resizeSignatureCanvasKaru = resizeCanvas;
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+  }
+
+  canvas.addEventListener("mousedown", e => { drawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; });
+  canvas.addEventListener("mousemove", e => {
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke();
+    lastX = p.x; lastY = p.y;
+  });
+  canvas.addEventListener("mouseup", () => { drawing = false; });
+  canvas.addEventListener("mouseleave", () => { drawing = false; });
+
+  canvas.addEventListener("touchstart", e => { e.preventDefault(); drawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; }, { passive: false });
+  canvas.addEventListener("touchmove", e => {
+    e.preventDefault();
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke();
+    lastX = p.x; lastY = p.y;
+  }, { passive: false });
+  canvas.addEventListener("touchend", () => { drawing = false; });
+
+  document.getElementById("btnClearSignatureKaru").addEventListener("click", () => {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+  });
+
+  document.getElementById("btnUploadSignatureKaru").addEventListener("click", () => {
+    document.getElementById("fileUploadSignatureKaru").click();
+  });
+  document.getElementById("fileUploadSignatureKaru").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    drawUploadedImageToCanvas(file, canvas, ctx, () => {
+      showToast("Gambar tanda tangan berhasil dimuat. Klik 'Simpan Tanda Tangan' untuk menyimpan.");
+    });
+    e.target.value = "";
+  });
+
+  document.getElementById("btnSaveSignatureKaru").addEventListener("click", async () => {
+    const checkUrl = canvas.toDataURL("image/png");
+    const blank = document.createElement("canvas");
+    blank.width = canvas.width; blank.height = canvas.height;
+    if (checkUrl === blank.toDataURL("image/png")) {
+      showToast("Tanda tangan masih kosong, silakan bubuhkan dulu.");
+      return;
     }
+    // Kompres ke ukuran yang aman dikirim (lihat catatan di exportSignatureDataUrl).
+    const dataUrl = exportSignatureDataUrl(canvas);
+    const ukuranKB = estimateDataUrlSizeKB(dataUrl);
+    if (ukuranKB > 800) {
+      showToast("Gambar tanda tangan masih terlalu besar (" + ukuranKB + " KB). Coba unggah foto dengan resolusi lebih rendah, atau gambar manual di kanvas.", true);
+      return;
+    }
+    const btn = document.getElementById("btnSaveSignatureKaru");
+    btn.disabled = true; btn.textContent = "Menyimpan...";
 
-    const rowIdx = findRowIndexByValue(sh, 1, username);
-    if (rowIdx === -1) return { success: false, message: "Akun tidak ditemukan." };
+    // Memakai action backend yang sama dengan Verifikator (saveVerifikatorSignature),
+    // karena backend sudah generik berbasis username, tidak dibatasi role tertentu.
+    const res = await apiCall("saveVerifikatorSignature", {
+      username: STATE.user.username,
+      signature: dataUrl,
+    });
 
-    sh.getRange(rowIdx, sigCol).setValue(p.signature);
-    return { success: true, message: "Tanda tangan berhasil disimpan ke server." };
+    btn.disabled = false; btn.textContent = "💾 Simpan Tanda Tangan";
+
+    if (res.success) {
+      STATE.karuSignature = dataUrl;
+      renderSignatureStatusKaru(dataUrl);
+      showToast("Tanda tangan berhasil disimpan ke server. Akan tercetak di semua HP.");
+    } else {
+      showToast(res.message || "Gagal menyimpan tanda tangan ke server.", true);
+    }
+  });
+
+  window.loadSavedSignatureKaru = async function() {
+    try {
+      const res = await apiCall("getVerifikatorSignature", { username: STATE.user.username || "" });
+      if (res.success && res.data && res.data.signature) {
+        STATE.karuSignature = res.data.signature;
+        renderSignatureStatusKaru(res.data.signature);
+      }
+    } catch (e) {
+      console.error("Gagal memuat tanda tangan Karu:", e);
+    }
+  };
+
+  function renderSignatureStatusKaru(dataUrl) {
+    const el = document.getElementById("signatureStatusKaru");
+    el.style.display = "block";
+    el.innerHTML = `<div class="sign-saved-badge">✅ Tanda tangan sudah tersimpan</div>
+      <img src="${dataUrl}" class="sign-preview" alt="Preview tanda tangan" />`;
+  }
+})();
+
+/* =========================================================
+   VERIFIKATOR
+   ========================================================= */
+function populateVerifMonthFilter() {
+  const sel = document.getElementById("filterBulanVerif");
+  sel.innerHTML = "";
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+    const opt = document.createElement("option");
+    opt.value = val;
+    opt.textContent = `${BULAN_NAMA[d.getMonth()]} ${d.getFullYear()}`;
+    sel.appendChild(opt);
+  }
+}
+
+document.getElementById("filterBulanVerif").addEventListener("change", loadVerifikatorData);
+document.getElementById("filterStatusVerif").addEventListener("change", renderVerifTable);
+
+async function loadVerifikatorData() {
+  if (!document.getElementById("filterBulanVerif").options.length) populateVerifMonthFilter();
+  const bulan = document.getElementById("filterBulanVerif").value;
+  const res = await apiCall("getAllPengajuanForVerifikator", { bulan });
+  STATE.verifData = res.data || [];
+  STATE.verifSelectedIds.clear();
+  renderVerifTable();
+}
+
+function renderVerifTable() {
+  const statusFilter = document.getElementById("filterStatusVerif").value;
+  const tbody = document.getElementById("verifTableBody");
+  const emptyState = document.getElementById("verifEmptyState");
+  tbody.innerHTML = "";
+
+  let items = STATE.verifData;
+  if (statusFilter) items = items.filter(p => p.status === statusFilter);
+
+  if (!items.length) {
+    emptyState.style.display = "block";
+    document.querySelector("#panelVerifikator .verif-table-wrap table").style.display = "none";
+    return;
+  }
+  emptyState.style.display = "none";
+  document.querySelector("#panelVerifikator .verif-table-wrap table").style.display = "table";
+
+  items.forEach(p => {
+    const tr = document.createElement("tr");
+    tr.className = "row-" + p.status;
+    tr.innerHTML = `
+      <td><input type="checkbox" class="chk row-check" data-id="${p.id}" ${STATE.verifSelectedIds.has(p.id) ? "checked" : ""}/></td>
+      <td>${formatTglIndo(p.tanggal)}</td>
+      <td>${escapeHtml(p.nama)}<br/><span style="color:var(--ink-soft);font-size:11px;">${escapeHtml(p.username)}</span></td>
+      <td>${escapeHtml(pkLabel(p.pk))}</td>
+      <td>${escapeHtml(p.butirTeks)}</td>
+      <td>${escapeHtml(p.noRM)}</td>
+      <td><span class="status-tag ${p.status}">${statusLabel(p.status)}</span></td>
+      <td>
+        <div class="action-btns">
+          <button class="icon-btn accept" title="Terima" data-accept="${p.id}">&#10003;</button>
+          <button class="icon-btn reject" title="Tolak" data-reject="${p.id}">&#10005;</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll(".row-check").forEach(chk => {
+    chk.addEventListener("change", () => {
+      if (chk.checked) STATE.verifSelectedIds.add(chk.dataset.id);
+      else STATE.verifSelectedIds.delete(chk.dataset.id);
+    });
+  });
+  tbody.querySelectorAll("[data-accept]").forEach(btn => {
+    btn.addEventListener("click", () => updateSingleStatus(btn.dataset.accept, "diterima"));
+  });
+  tbody.querySelectorAll("[data-reject]").forEach(btn => {
+    btn.addEventListener("click", () => updateSingleStatus(btn.dataset.reject, "ditolak"));
   });
 }
 
-function actionGetVerifikatorSignature(p) {
-  const username = String(p.username || "").trim().toLowerCase();
-  const sh = getSheet(SHEET_USERS);
-  const users = sheetToObjects(sh);
-  const user = users.find(u => String(u.username).toLowerCase() === username);
-  return { success: true, data: { signature: (user && user.signature) || "" } };
+async function updateSingleStatus(id, status) {
+  const res = await apiCall("updateStatusPengajuan", {
+    id, status, verifikatorOleh: STATE.user.nama || STATE.user.username,
+  });
+  if (res.success) {
+    showToast(status === "diterima" ? "Pengajuan diterima." : "Pengajuan ditolak.");
+    await loadVerifikatorData();
+  } else {
+    showToast(res.message || "Gagal memperbarui status.");
+  }
 }
 
-// Dipakai saat cetak laporan: cari tanda tangan berdasarkan NAMA verifikator
-// (karena field verifikatorOleh di Pengajuan menyimpan nama, bukan username).
-function actionGetSignatureByName(p) {
-  const nama = String(p.nama || "").trim().toLowerCase();
-  const sh = getSheet(SHEET_USERS);
-  const users = sheetToObjects(sh);
-  const user = users.find(u => String(u.nama || u.username).trim().toLowerCase() === nama);
-  return { success: true, data: { signature: (user && user.signature) || "" } };
+document.getElementById("checkAllHeader").addEventListener("change", (e) => {
+  const checked = e.target.checked;
+  document.querySelectorAll(".row-check").forEach(chk => {
+    chk.checked = checked;
+    if (checked) STATE.verifSelectedIds.add(chk.dataset.id);
+    else STATE.verifSelectedIds.delete(chk.dataset.id);
+  });
+});
+
+document.getElementById("btnSelectAllVerif").addEventListener("click", () => {
+  document.getElementById("checkAllHeader").checked = true;
+  document.getElementById("checkAllHeader").dispatchEvent(new Event("change"));
+});
+
+document.getElementById("btnAcceptSelected").addEventListener("click", () => bulkUpdate("diterima"));
+document.getElementById("btnRejectSelected").addEventListener("click", () => bulkUpdate("ditolak"));
+
+async function bulkUpdate(status) {
+  const ids = Array.from(STATE.verifSelectedIds);
+  if (!ids.length) { showToast("Pilih minimal satu pengajuan terlebih dahulu."); return; }
+  const res = await apiCall("bulkUpdateStatus", {
+    ids, status, verifikatorOleh: STATE.user.nama || STATE.user.username,
+  });
+  if (res.success) {
+    showToast(res.message || "Status berhasil diperbarui.");
+    await loadVerifikatorData();
+  } else {
+    showToast(res.message || "Gagal memperbarui status.");
+  }
 }
 
-// Dipakai saat cetak laporan: ambil nama & tanda tangan Kepala Ruangan
-// (akun tunggal untuk seluruh unit), tanpa membuka data user lain.
-function actionGetKepalaRuangan() {
-  const sh = getSheet(SHEET_USERS);
-  const users = sheetToObjects(sh);
-  const karu = users.find(u => String(u.role || "").split(",").map(r => r.trim().toLowerCase()).includes("kepala_ruangan"));
-  if (!karu) return { success: true, data: { nama: "", signature: "" } };
-  return { success: true, data: { nama: karu.nama || karu.username, signature: karu.signature || "" } };
+/* =========================================================
+   ADMIN — KELOLA AKUN
+   ========================================================= */
+async function loadAdminUsers() {
+  const res = await apiCall("adminGetUsers", {});
+  STATE.adminUsers = res.data || [];
+  renderAdminUserTable();
 }
 
+function renderAdminUserTable() {
+  const tbody = document.getElementById("userTableBody");
+  if (!STATE.adminUsers.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);padding:20px;">Belum ada akun. Klik "+ Tambah Akun Baru" untuk membuat akun pertama.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = STATE.adminUsers.map(u => {
+    const roles = String(u.role || "").split(",").map(r => r.trim().toLowerCase()).filter(Boolean);
+    const roleBadges = roles.map(r => `<span class="status-tag pending" style="background:var(--teal);margin-right:4px;">${ROLE_LABEL[r] || r}</span>`).join("");
+    return `
+      <tr>
+        <td><strong>${escapeHtml(u.username)}</strong></td>
+        <td>${escapeHtml(u.nama)}</td>
+        <td>${escapeHtml(u.nip || "-")}</td>
+        <td>${escapeHtml(pkLabel(u.pk) || "-")}</td>
+        <td>${roleBadges}</td>
+        <td>
+          <div class="action-btns">
+            <button class="icon-btn accept" title="Edit" data-edit-user="${escapeHtml(u.username)}">&#9998;</button>
+            <button class="icon-btn reject" title="Hapus" data-delete-user="${escapeHtml(u.username)}">&#10005;</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  tbody.querySelectorAll("[data-edit-user]").forEach(btn => {
+    btn.addEventListener("click", () => openUserModal(btn.dataset.editUser));
+  });
+  tbody.querySelectorAll("[data-delete-user]").forEach(btn => {
+    btn.addEventListener("click", () => deleteUser(btn.dataset.deleteUser));
+  });
+}
+
+function openUserModal(username = null) {
+  STATE.editingUsername = username;
+  document.getElementById("userModalTitle").textContent = username ? "Edit Akun" : "Tambah Akun";
+  document.getElementById("userModalPasswordLabel").textContent = username ? "Password Baru (kosongkan jika tidak diubah)" : "Password";
+  document.getElementById("userModalPassword").value = "";
+
+  refreshPKSelectOptions();
+
+  document.getElementById("roleCheckPerawat").checked = false;
+  document.getElementById("roleCheckVerifikator").checked = false;
+  document.getElementById("roleCheckAdmin").checked = false;
+  document.getElementById("roleCheckKepalaRuangan").checked = false;
+
+  if (username) {
+    const u = STATE.adminUsers.find(x => x.username === username);
+    document.getElementById("userModalUsername").value = u.username;
+    document.getElementById("userModalUsername").disabled = true;
+    document.getElementById("userModalNama").value = u.nama || "";
+    document.getElementById("userModalNIP").value = u.nip || "";
+    document.getElementById("userModalPK").value = u.pk && u.pk !== "" ? u.pk : "-";
+    const roles = String(u.role || "").split(",").map(r => r.trim().toLowerCase());
+    if (roles.includes("perawat")) document.getElementById("roleCheckPerawat").checked = true;
+    if (roles.includes("verifikator")) document.getElementById("roleCheckVerifikator").checked = true;
+    if (roles.includes("admin")) document.getElementById("roleCheckAdmin").checked = true;
+    if (roles.includes("kepala_ruangan")) document.getElementById("roleCheckKepalaRuangan").checked = true;
+  } else {
+    document.getElementById("userModalUsername").value = "";
+    document.getElementById("userModalUsername").disabled = false;
+    document.getElementById("userModalNama").value = "";
+    document.getElementById("userModalNIP").value = "";
+    document.getElementById("userModalPK").value = "PK1";
+  }
+
+  document.getElementById("userModal").classList.add("show");
+}
+
+document.getElementById("btnAddUser").addEventListener("click", () => openUserModal(null));
+document.getElementById("btnCloseUserModal").addEventListener("click", () => {
+  document.getElementById("userModal").classList.remove("show");
+});
+
+document.getElementById("btnSaveUserModal").addEventListener("click", async () => {
+  const username = document.getElementById("userModalUsername").value.trim();
+  const nama = document.getElementById("userModalNama").value.trim();
+  const nip = document.getElementById("userModalNIP").value.trim();
+  const pk = document.getElementById("userModalPK").value;
+  const password = document.getElementById("userModalPassword").value;
+
+  const roles = [];
+  if (document.getElementById("roleCheckPerawat").checked) roles.push("perawat");
+  if (document.getElementById("roleCheckVerifikator").checked) roles.push("verifikator");
+  if (document.getElementById("roleCheckAdmin").checked) roles.push("admin");
+  if (document.getElementById("roleCheckKepalaRuangan").checked) roles.push("kepala_ruangan");
+
+  if (!username) { showToast("Username tidak boleh kosong."); return; }
+  if (!roles.length) { showToast("Pilih minimal satu peran."); return; }
+  if (!STATE.editingUsername && !password) { showToast("Password wajib diisi untuk akun baru."); return; }
+
+  const btn = document.getElementById("btnSaveUserModal");
+  btn.disabled = true; btn.textContent = "Menyimpan...";
+  const res = await apiCall("adminSaveUser", {
+    username, nama, nip, pk, role: roles.join(","), password: password || "",
+  });
+  btn.disabled = false; btn.textContent = "Simpan";
+
+  if (res.success) {
+    showToast(res.message || "Akun berhasil disimpan.");
+    document.getElementById("userModal").classList.remove("show");
+    await loadAdminUsers();
+  } else {
+    showToast(res.message || "Gagal menyimpan akun.");
+  }
+});
+
+async function deleteUser(username) {
+  if (username === STATE.user.username) {
+    showToast("Tidak bisa menghapus akun yang sedang Anda gunakan.");
+    return;
+  }
+  const res = await apiCall("adminDeleteUser", { username });
+  if (res.success) {
+    showToast(res.message || "Akun berhasil dihapus.");
+    await loadAdminUsers();
+  } else {
+    showToast(res.message || "Gagal menghapus akun.");
+  }
+}
+
+/* =========================================================
+   ADMIN — KELOLA BUTIR KEGIATAN SEMUA PK
+   ========================================================= */
+function buildAdminPkSwitcher() {
+  const row = document.getElementById("adminPkSwitchRow");
+  row.innerHTML = "";
+  ["PK1","PK2","PK3","PK4"].forEach(pk => {
+    const pill = document.createElement("button");
+    pill.className = "pk-pill" + (pk === STATE.adminCurrentPK ? " active" : "");
+    pill.textContent = pkLabel(pk);
+    pill.addEventListener("click", async () => {
+      STATE.adminCurrentPK = pk;
+      document.querySelectorAll("#adminPkSwitchRow .pk-pill").forEach(p => p.classList.remove("active"));
+      pill.classList.add("active");
+      await loadAdminButir(pk);
+    });
+    row.appendChild(pill);
+  });
+}
+
+async function loadAdminButir(pk) {
+  const res = await apiCall("adminGetAllButir", {});
+  STATE.adminButir = res.data || { PK1: [], PK2: [], PK3: [], PK4: [] };
+  renderAdminButirList();
+}
+
+function renderAdminButirList() {
+  const list = document.getElementById("adminButirList");
+  list.innerHTML = "";
+  const items = STATE.adminButir[STATE.adminCurrentPK] || [];
+  items.forEach((item, idx) => {
+    const li = document.createElement("li");
+    li.className = "butir-item";
+    li.innerHTML = `
+      <div class="butir-num">${idx + 1}</div>
+      <textarea class="admin-butir-edit-input butir-edit-input" data-idx="${idx}" rows="1">${escapeHtml(item.teks)}</textarea>
+      <button class="icon-btn reject" title="Hapus butir ini" data-admin-remove="${idx}" style="flex-shrink:0;">✕</button>
+    `;
+    list.appendChild(li);
+  });
+
+  list.querySelectorAll(".admin-butir-edit-input").forEach(ta => {
+    autoGrow(ta);
+    ta.addEventListener("input", () => autoGrow(ta));
+  });
+  list.querySelectorAll("[data-admin-remove]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = parseInt(btn.dataset.adminRemove, 10);
+      STATE.adminButir[STATE.adminCurrentPK].splice(idx, 1);
+      renderAdminButirList();
+    });
+  });
+}
+
+document.getElementById("btnAdminAddButir").addEventListener("click", () => {
+  if (!STATE.adminButir[STATE.adminCurrentPK]) STATE.adminButir[STATE.adminCurrentPK] = [];
+  STATE.adminButir[STATE.adminCurrentPK].push({ id: "", teks: "" });
+  renderAdminButirList();
+  const textareas = document.querySelectorAll("#adminButirList textarea");
+  if (textareas.length) textareas[textareas.length - 1].focus();
+});
+
+document.getElementById("btnAdminSaveButir").addEventListener("click", async () => {
+  const textareas = document.querySelectorAll("#adminButirList textarea");
+  const items = Array.from(textareas).map((ta, idx) => ({
+    id: STATE.adminButir[STATE.adminCurrentPK][idx]?.id || "",
+    teks: ta.value.trim(),
+  })).filter(it => it.teks);
+
+  const btn = document.getElementById("btnAdminSaveButir");
+  btn.disabled = true; btn.textContent = "Menyimpan...";
+  const res = await apiCall("adminSaveButirForPK", { pk: STATE.adminCurrentPK, items });
+  btn.disabled = false; btn.textContent = "Simpan Perubahan";
+
+  if (res.success) {
+    showToast("Butir kegiatan " + STATE.adminCurrentPK.replace("PK","PK ") + " berhasil disimpan.");
+    await loadAdminButir(STATE.adminCurrentPK);
+  } else {
+    showToast(res.message || "Gagal menyimpan.");
+  }
+});
+</script>
+</body>
+</html>
