@@ -2036,6 +2036,14 @@ async function cetakLaporanBulanan(ttdPerawatDataUrl) {
     }
   }
 
+  // Normalisasi TTD verifikator ke 400x160 agar konsisten dengan TTD perawat.
+  // Data lama di server mungkin disimpan sebelum standarisasi ukuran, sehingga
+  // rasionya bisa berbeda. Gambar ulang ke canvas standar sebelum dipakai cetak.
+  if (signatureUntukCetak) {
+    try { signatureUntukCetak = await normalizeSignatureToStdSize(signatureUntukCetak); }
+    catch (e) { console.error("Gagal normalisasi TTD verifikator:", e); }
+  }
+
   // Ambil nama & tanda tangan Kepala Ruangan (akun tunggal untuk seluruh unit).
   // Kalau belum ada akun Kepala Ruangan yang dibuat, baris TTD ketiga ini
   // tetap dicetak tapi kosong (nama & tanda tangan kosong), tidak error.
@@ -2049,6 +2057,12 @@ async function cetakLaporanBulanan(ttdPerawatDataUrl) {
     }
   } catch (e) {
     console.error("Gagal mengambil data Kepala Ruangan:", e);
+  }
+
+  // Normalisasi TTD Kepala Ruangan ke 400x160 juga.
+  if (karuSignature) {
+    try { karuSignature = await normalizeSignatureToStdSize(karuSignature); }
+    catch (e) { console.error("Gagal normalisasi TTD Kepala Ruangan:", e); }
   }
 
   const docHtml = `<!DOCTYPE html>
@@ -2272,6 +2286,37 @@ function exportSignatureDataUrl(sourceCanvas) {
   tctx.drawImage(sourceCanvas, dx, dy, drawW, drawH);
 
   return temp.toDataURL("image/jpeg", 0.88);
+}
+
+// Normalisasi data URL TTD dari SERVER (format & ukuran tidak diketahui) ke
+// canvas 400x160 yang sama dengan exportSignatureDataUrl.
+// Ini penting karena TTD lama mungkin disimpan sebelum fungsi standarisasi ada,
+// sehingga rasio/ukurannya berbeda-beda antar perangkat.
+function normalizeSignatureToStdSize(dataUrl) {
+  return new Promise((resolve, reject) => {
+    if (!dataUrl) { resolve(""); return; }
+    const img = new Image();
+    img.onload = function () {
+      const OUT_W = 400;
+      const OUT_H = 160;
+      const temp = document.createElement("canvas");
+      temp.width = OUT_W;
+      temp.height = OUT_H;
+      const ctx = temp.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, OUT_W, OUT_H);
+      // Fit contain: pertahankan proporsional, tidak terpotong, di-center.
+      const scale = Math.min(OUT_W / img.naturalWidth, OUT_H / img.naturalHeight);
+      const drawW = img.naturalWidth * scale;
+      const drawH = img.naturalHeight * scale;
+      const dx = (OUT_W - drawW) / 2;
+      const dy = (OUT_H - drawH) / 2;
+      ctx.drawImage(img, dx, dy, drawW, drawH);
+      resolve(temp.toDataURL("image/jpeg", 0.88));
+    };
+    img.onerror = function () { resolve(dataUrl); }; // fallback: pakai apa adanya
+    img.src = dataUrl;
+  });
 }
 
 // Cek ukuran data URL (perkiraan KB). Dipakai untuk memberi peringatan dini
