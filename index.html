@@ -502,7 +502,7 @@
         </p>
         <div id="signatureStatus" style="display:none;margin-bottom:12px;"></div>
         <div id="signaturePadWrap" style="border:2px dashed var(--line);border-radius:10px;background:#fafaf8;overflow:hidden;cursor:crosshair;touch-action:none;">
-          <canvas id="signatureCanvas" style="display:block;width:100%;height:180px;"></canvas>
+          <canvas id="signatureCanvas" style="display:block;width:100%;height:160px;"></canvas>
         </div>
         <p style="font-size:11px;color:var(--ink-soft);margin:6px 0 10px;">Tanda tangan menggunakan jari (layar sentuh) atau mouse, atau unggah gambar tanda tangan dari file.</p>
         <div class="btn-row">
@@ -561,7 +561,7 @@
         </p>
         <div id="signatureStatusKaru" style="display:none;margin-bottom:12px;"></div>
         <div id="signaturePadWrapKaru" style="border:2px dashed var(--line);border-radius:10px;background:#fafaf8;overflow:hidden;cursor:crosshair;touch-action:none;">
-          <canvas id="signatureCanvasKaru" style="display:block;width:100%;height:180px;"></canvas>
+          <canvas id="signatureCanvasKaru" style="display:block;width:100%;height:160px;"></canvas>
         </div>
         <p style="font-size:11px;color:var(--ink-soft);margin:6px 0 10px;">Tanda tangan menggunakan jari (layar sentuh) atau mouse, atau unggah gambar tanda tangan dari file.</p>
         <div class="btn-row">
@@ -2084,7 +2084,7 @@ async function cetakLaporanBulanan(ttdPerawatDataUrl) {
   .print-sign-row-center{ display:flex; justify-content:center; margin-top:28px; font-size:12px; }
   .print-sign-col{ text-align:center; width:280px; }
   .print-sign-col .sign-space{ height:75px; display:flex; align-items:center; justify-content:center; }
-  .print-sign-col .sign-space img{ width:200px; height:75px; display:block; margin:0 auto; object-fit:fill; }
+  .print-sign-col .sign-space img{ max-width:200px; max-height:75px; width:auto; height:auto; display:block; margin:0 auto; object-fit:contain; }
   .toolbar{
     display:flex; gap:10px; justify-content:center; padding:14px;
     background:#f1f1f1; position:sticky; top:0; margin:-24px -28px 24px;
@@ -2393,7 +2393,7 @@ function estimateDataUrlSizeKB(dataUrl) {
     const wrap = document.getElementById("signaturePadWrap");
     const dpr = window.devicePixelRatio || 1;
     const w = wrap.offsetWidth || wrap.parentElement.offsetWidth || 300;
-    const h = 180;
+    const h = 160;
     canvas.width = w * dpr;
     canvas.height = h * dpr;
     // Gunakan setTransform (bukan scale) agar tidak menumpuk saat dipanggil berulang kali
@@ -2524,7 +2524,7 @@ function estimateDataUrlSizeKB(dataUrl) {
     const wrap = document.getElementById("signaturePadWrapKaru");
     const dpr = window.devicePixelRatio || 1;
     const w = wrap.offsetWidth || wrap.parentElement.offsetWidth || 300;
-    const h = 180;
+    const h = 160;
     canvas.width = w * dpr;
     canvas.height = h * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
